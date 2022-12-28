@@ -18,6 +18,6 @@ import Renderer from "./Renderer.js";
 		let deltaT = 0.02; // time since the last frame, in seconds. todo: actually calculate
 		camera.update(deltaT);
 		renderer.resize(window.innerWidth,window.innerHeight);
-		renderer.render(camera.viewMatrix.mul(Matrix4f.transformationMatrix(new Matrix3f().rotateExp(0,t*2e-4,t*1e-4),new Vector3f(0,0,-2))));
+		renderer.render(camera.viewMatrix);
 	}
 })();

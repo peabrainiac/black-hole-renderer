@@ -2,13 +2,7 @@ import Vao from "./gl/VAO.js";
 import MainShader from "./MainShader.js";
 import Matrix4f from "./gl/Matrix4f.js";
 import CubeMap from "./gl/CubeMap.js";
-
-/** @type {HTMLImageElement} */
-const starMap = await new Promise(resolve=>{
-	let img = document.createElement("img");
-	img.onload = ()=>resolve(img);
-	img.src = "./res/starmap_2020_4k.png";
-});
+import StarBox from "./StarBox.js";
 
 /**
  * The main class responsible for rendering to the WebGL canvas.
@@ -25,11 +19,9 @@ export default class Renderer {
 		this._gl.clearDepth(0);
 		this._gl.depthFunc(this._gl.GREATER);
 		this._gl.clearColor(0.4,0.2,0,1);
-		this._quad = Vao.createCube(this._gl,([x,y,z])=>[x/2,y/2,z/2]);
+		this._cube = Vao.createCube(this._gl,([x,y,z])=>[x/2,y/2,z/2]);
 		this._shader = new MainShader(this._gl);
-		this._cubeMap = CubeMap.fromEquirectangularProjection(this._gl,starMap);
-		this._gl.generateMipmap(this._gl.TEXTURE_CUBE_MAP);
-		this._gl.texParameteri(this._gl.TEXTURE_CUBE_MAP,this._gl.TEXTURE_MIN_FILTER,this._gl.LINEAR_MIPMAP_LINEAR);
+		this._starBox = new StarBox(this._gl);
 
 		this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
 		this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,10);
@@ -41,9 +33,11 @@ export default class Renderer {
 	 */
 	render(viewMatrix){
 		this._gl.clear(this._gl.COLOR_BUFFER_BIT|this._gl.DEPTH_BUFFER_BIT);
+		this._starBox.render(viewMatrix,this._projectionMatrix);
+		this._gl.clear(this._gl.DEPTH_BUFFER_BIT);
 		this._shader.use();
 		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
-		this._quad.render();
+		this._cube.render();
 	}
 
 	/**
