@@ -86,6 +86,6 @@ class StarBoxShader extends ShaderProgram {
 	 * @param {WebGL2RenderingContext} gl
 	 */
 	constructor(gl){
-		super(gl,vertexSource,fragmentSource);
+		super(gl,vertexSource,fragmentSource,{attribs:["position"],textures:["cubeMap"]});
 	}
 }

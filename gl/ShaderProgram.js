@@ -1,5 +1,6 @@
 import Matrix3f from "./Matrix3f.js";
 import Matrix4f from "./Matrix4f.js";
+import Vector3f from "./Vector3f.js";
 
 
 /**
@@ -139,7 +140,7 @@ export default class ShaderProgram {
 
 	/**
 	 * @param {string} name
-	 * @param {number|Matrix3f|Matrix4f} value
+	 * @param {number|Vector3f|Matrix3f|Matrix4f} value
 	 */
 	load(name,value){
 		let type = this._uniformTypes[name];
@@ -149,13 +150,13 @@ export default class ShaderProgram {
 			this.loadFloat(name,value);
 		}/*else if(type==this._gl.FLOAT_VEC2){
 			this.loadVector2f(name,value);
-		}else if(type==this._gl.FLOAT_VEC3){
-			if (this._uniformNames[name].endsWith("[0]")){
+		}*/else if(type==this._gl.FLOAT_VEC3&&value instanceof Vector3f){
+			/*if (this._uniformNames[name].endsWith("[0]")){
 				this.loadVector3fArray(name,value);
-			}else{
-				this.loadVector3f(name,value);
-			}
-		}*/else if(type==this._gl.FLOAT_MAT3&&value instanceof Matrix3f){
+			}else{*/
+			this.loadVector3f(name,value);
+			//}
+		}else if(type==this._gl.FLOAT_MAT3&&value instanceof Matrix3f){
 			this.loadMatrix3f(name,value);
 		}else if(type==this._gl.FLOAT_MAT4&&value instanceof Matrix4f){
 			this.loadMatrix4f(name,value);
@@ -190,7 +191,7 @@ export default class ShaderProgram {
 
 	/**
 	 * @param {string} name
-	 * @param {{x:number,y:number,z:number}} vector
+	 * @param {Vector3f} vector
 	 */
 	loadVector3f(name,vector){
 		this._gl.uniform3f(this._uniformLocations[name],vector.x,vector.y,vector.z);

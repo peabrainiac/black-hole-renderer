@@ -1,8 +1,9 @@
 import Vao from "./gl/VAO.js";
 import MainShader from "./MainShader.js";
 import Matrix4f from "./gl/Matrix4f.js";
-import CubeMap from "./gl/CubeMap.js";
 import StarBox from "./StarBox.js";
+import Matrix3f from "./gl/Matrix3f.js";
+import Camera from "./Camera.js";
 
 /**
  * The main class responsible for rendering to the WebGL canvas.
@@ -19,7 +20,7 @@ export default class Renderer {
 		this._gl.clearDepth(0);
 		this._gl.depthFunc(this._gl.GREATER);
 		this._gl.clearColor(0.4,0.2,0,1);
-		this._cube = Vao.createCube(this._gl,([x,y,z])=>[x/2,y/2,z/2]);
+		this._cube = Vao.createCube(this._gl,new Matrix3f(0.5));
 		this._shader = new MainShader(this._gl);
 		this._starBox = new StarBox(this._gl);
 
@@ -29,14 +30,18 @@ export default class Renderer {
 
 	/**
 	 * Renders one frame to the canvas.
-	 * @param {Matrix4f} viewMatrix
+	 * @param {Camera} camera
 	 */
-	render(viewMatrix){
+	render(camera){
+		let viewMatrix = camera.viewMatrix;
 		this._gl.clear(this._gl.COLOR_BUFFER_BIT|this._gl.DEPTH_BUFFER_BIT);
 		this._starBox.render(viewMatrix,this._projectionMatrix);
 		this._gl.clear(this._gl.DEPTH_BUFFER_BIT);
+		
 		this._shader.use();
 		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
+		this._shader.uniforms.cameraPosition = camera.position;
+		this._starBox.cubeMap.bind();
 		this._cube.render();
 	}
 

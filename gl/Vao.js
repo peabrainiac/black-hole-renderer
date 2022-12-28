@@ -1,3 +1,6 @@
+import Matrix3f from "./Matrix3f.js";
+import Vector3f from "./Vector3f.js";
+
 /**
  * A simple wrapper for vertex array objects. Partly copied from https://github.com/peabrainiac/peabrainiac.github.io/tree/master/js/gl.
  */
@@ -87,12 +90,23 @@ export default class Vao {
 
 	/**
 	 * @param {WebGL2RenderingContext} gl
-	 * @param {(p:[number,number,number])=>[number,number,number]} [transform]
+	 * @param {Matrix3f} [transform]
 	 */
-	static createCube(gl,transform=(p=>p)){
+	static createCube(gl,transform=new Matrix3f()){
 		let vao = new Vao(gl);
-		vao.addVbo(0,3,[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]].map(transform).flat());
-		vao.addIndexBuffer([5,7,3,3,1,5,6,7,5,5,4,6,3,2,0,0,1,3,6,4,0,0,2,6,5,1,0,0,4,5,7,6,3,3,6,2]);
+		let points = [];
+		let normals = [];
+		let indices = [];
+		for (let faceTransform of [new Matrix3f(),new Matrix3f([1,-1,-1]),new Matrix3f([1,0,0,0,0,1,0,-1,0]),new Matrix3f([1,0,0,0,0,-1,0,1,0]),new Matrix3f([0,0,1,0,1,0,-1,0,0]),new Matrix3f([0,0,-1,0,1,0,1,0,0])]){
+			points.push(...[[1,1,1],[-1,1,1],[-1,-1,1],[1,-1,1]].map(([x,y,z])=>transform.mulVec(faceTransform.mulVec(new Vector3f(x,y,z)))).map(v=>[v.x,v.y,v.z]));
+			normals.push(...[[0,0,1],[0,0,1],[0,0,1],[0,0,1]].map(([x,y,z])=>transform.mulVec(faceTransform.mulVec(new Vector3f(x,y,z)))).map(v=>[v.x,v.y,v.z]));
+			indices.push(...[2,1,0,0,3,2].map(i=>i+points.length-4));
+		}
+		vao.addVbo(0,3,points.flat());
+		vao.addVbo(1,3,normals.flat());
+		vao.addIndexBuffer(indices);
+		//vao.addVbo(0,3,[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]].map(([x,y,z])=>transform.mulVec(new Vector3f(x,y,z))).map(v=>[v.x,v.y,v.z]).flat());
+		//vao.addIndexBuffer([5,7,3,3,1,5,6,7,5,5,4,6,3,2,0,0,1,3,6,4,0,0,2,6,5,1,0,0,4,5,7,6,3,3,6,2]);
 		return vao;
 	}
 }

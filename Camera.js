@@ -31,4 +31,8 @@ export default class Camera{
 		let rotationInverse = this._rotation.getTranspose();
 		return Matrix4f.transformationMatrix(rotationInverse,rotationInverse.mulVec(this._position).scale(-1));
 	}
+
+	get position(){
+		return this._position;
+	}
 }
