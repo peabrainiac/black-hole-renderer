@@ -13,12 +13,14 @@ const vertexSource = /* glsl */`
     out vec3 pass_normal;
 
     uniform mat4 viewProjection;
+    uniform mat4 modelTransform;
     uniform vec3 cameraPosition;
 
     void main(void){
-        pass_relativePosition = position-cameraPosition;
-        pass_normal = normal;
-        gl_Position = viewProjection*vec4(position,1.0);
+        vec4 pos = modelTransform*vec4(position,1.0);
+        pass_relativePosition = pos.xyz-cameraPosition;
+        pass_normal = (modelTransform*vec4(normal,0.0)).xyz;
+        gl_Position = viewProjection*pos;
     }
 `;
 
@@ -35,14 +37,14 @@ const fragmentSource = /* glsl */ `
 
     void main(void){
         vec3 normal = normalize(pass_normal);
-        vec3 ownColor = vec3(0.25);
+        vec3 ownColor = vec3(0.0625);
         vec3 reflectionColor = texture(starMap,reflect(pass_relativePosition,normal)).xyz;
-        out_color = vec4(0.5*(ownColor+reflectionColor),1.0);
+        out_color = vec4(mix(ownColor,reflectionColor,0.4),1.0);
     }
 `;
 
 /**
- * @extends {ShaderProgram<{viewProjection:Matrix4f,cameraPosition:Vector3f}>}
+ * @extends {ShaderProgram<{viewProjection:Matrix4f,modelTransform:Matrix4f,cameraPosition:Vector3f}>}
  */
 export default class MainShader extends ShaderProgram {
     /**

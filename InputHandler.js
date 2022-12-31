@@ -9,7 +9,6 @@ export default class InputHandler {
 	constructor(targetElement){
 		this.target = targetElement;
 		this.target.tabIndex = -1;
-		this.target.style.pointerEvents = "none";
 		this.keys = {w:false,a:false,s:false,d:false,space:false,shift:false};
 		this._hasPointerLock = false;
         this._deltaX = 0;

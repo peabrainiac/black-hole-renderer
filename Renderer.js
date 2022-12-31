@@ -4,6 +4,8 @@ import Matrix4f from "./gl/Matrix4f.js";
 import StarBox from "./StarBox.js";
 import Matrix3f from "./gl/Matrix3f.js";
 import Camera from "./Camera.js";
+import Vector3f from "./gl/Vector3f.js";
+import BlackHoleShader from "./BlackHoleShader.js";
 
 /**
  * The main class responsible for rendering to the WebGL canvas.
@@ -15,34 +17,47 @@ export default class Renderer {
 	 */
 	constructor(canvas){
 		this._canvas = canvas;
-		this._gl = canvas.getContext("webgl2");
+		this._gl = canvas.getContext("webgl2",{preserveDrawingBuffer:true});
 		this._gl.enable(this._gl.DEPTH_TEST);
 		this._gl.clearDepth(0);
 		this._gl.depthFunc(this._gl.GREATER);
 		this._gl.clearColor(0.4,0.2,0,1);
+		this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,50);
+
+		this._starBox = new StarBox(this._gl);
 		this._cube = Vao.createCube(this._gl,new Matrix3f(0.5));
 		this._shader = new MainShader(this._gl);
-		this._starBox = new StarBox(this._gl);
-
-		this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
-		this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,10);
+		this._blackHoleSimulationRadius = 10;
+		this._blackHoleCube = Vao.createCube(this._gl,new Matrix3f());
+		this._blackHoleShader = new BlackHoleShader(this._gl);
 	}
 
 	/**
 	 * Renders one frame to the canvas.
 	 * @param {Camera} camera
+	 * @param {number} t
 	 */
-	render(camera){
+	render(camera,t){
 		let viewMatrix = camera.viewMatrix;
+		this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
 		this._gl.clear(this._gl.COLOR_BUFFER_BIT|this._gl.DEPTH_BUFFER_BIT);
 		this._starBox.render(viewMatrix,this._projectionMatrix);
 		this._gl.clear(this._gl.DEPTH_BUFFER_BIT);
 		
 		this._shader.use();
 		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
+		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f().rotateExp(0,0.1*t,0.2*t),new Vector3f(-1,0,0));
 		this._shader.uniforms.cameraPosition = camera.position;
 		this._starBox.cubeMap.bind();
 		this._cube.render();
+
+		this._blackHoleShader.use();
+		this._blackHoleShader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
+		this._blackHoleShader.uniforms.centerPosition = new Vector3f(2,0,15);
+		this._blackHoleShader.uniforms.cameraPosition = camera.position;
+		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
+		this._starBox.cubeMap.bind();
+		this._blackHoleCube.render();
 	}
 
 	/**
@@ -56,7 +71,7 @@ export default class Renderer {
 			this._canvas.width = width;
 			this._canvas.height = height;
 			this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
-			this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,10);
+			this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,50);
 		}
 	}
 }

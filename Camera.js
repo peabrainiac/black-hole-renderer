@@ -19,9 +19,9 @@ export default class Camera{
 	update(deltaT){
 		let rx = this._inputHandler.getMouseDeltaX()/500;
 		let ry = this._inputHandler.getMouseDeltaY()/500;
-		let dx = (+this._inputHandler.keys.d-(+this._inputHandler.keys.a))*deltaT;
-		let dy = (+this._inputHandler.keys.space-(+this._inputHandler.keys.shift))*deltaT;
-		let dz = (+this._inputHandler.keys.w-(+this._inputHandler.keys.s))*deltaT;
+		let dx = 2*(+this._inputHandler.keys.d-(+this._inputHandler.keys.a))*deltaT;
+		let dy = 2*(+this._inputHandler.keys.space-(+this._inputHandler.keys.shift))*deltaT;
+		let dz = 2*(+this._inputHandler.keys.w-(+this._inputHandler.keys.s))*deltaT;
 		this._rotation.rotateExp(ry,rx,0);
 		this._position.add(this._rotation.mulVec(new Vector3f(dx,dy,dz)));
 	}

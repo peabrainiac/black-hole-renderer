@@ -13,11 +13,17 @@ import Renderer from "./Renderer.js";
 		inputHandler.requestPointerLock();
 	});
 	const camera = new Camera(inputHandler);
+	let prevT;
+	let inGameTime = 0; // time this script has been running in seconds, not counting times when execution was paused by being in another tab etc.
 	while (true){
+		// waits for the next repaint of the browser window - JS equivalent of vsync, basically.
 		let t = await new Promise(requestAnimationFrame);
-		let deltaT = 0.02; // time since the last frame, in seconds. todo: actually calculate
+		/** time since the last frame in seconds, capped at 0.25. */
+		let deltaT = Math.min(0.25,(prevT?t-prevT:0)/1000);
+		prevT = t;
+		inGameTime += deltaT;
 		camera.update(deltaT);
 		renderer.resize(window.innerWidth,window.innerHeight);
-		renderer.render(camera);
+		renderer.render(camera,inGameTime);
 	}
 })();
