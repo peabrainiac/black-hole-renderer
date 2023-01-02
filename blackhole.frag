@@ -13,6 +13,7 @@ uniform samplerCube starMap;
 
 mat4 metric(vec4 x);
 vec4 hamiltonianGradient(vec4 x, vec4 p);
+vec4 renullMomentum(mat4 g_inv, vec4 p);
 
 void main(void){
 	vec3 rayDirection = normalize(pass_position-cameraPosition);
@@ -27,8 +28,9 @@ void main(void){
 
 		vec4 x = vec4(0,intersectionPosition-centerPosition);
 		vec4 p = metric(x)*vec4(1,rayDirection);
+		p = normalize(renullMomentum(inverse(metric(x)),p));
 
-		float minDistance = 0.6;//clamp(length(x),0.05,0.25);
+		float minDistance = clamp(length(x),0.01,0.5);
 
 		int i;
 		for (i=0;i<100;i++){
@@ -37,6 +39,7 @@ void main(void){
 			vec4 prevP = p;
 			p -= timeStep*hamiltonianGradient(x,p);
 			x += timeStep*inverse(metric(x))*prevP;
+			p = 2.0*normalize(renullMomentum(inverse(metric(x)),p));
 			if (length(x.yzw)<minDistance){
 				break;
 			}else if(length(x.yzw)>simulationRadius){
@@ -50,6 +53,9 @@ void main(void){
 		rayDirection = (inverse(metric(x))*p).yzw;
 		out_color = length(x.yzw)<minDistance?vec4(0,0,0,1):texture(starMap,rayDirection);
 		//out_color.xyz += vec3(0.01*float(i));
+		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
+		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*dot(p,inverse(metric(x))*p)),0.5);
+		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-p.x/temp)),0.5);
 	}
 	//out_color.xyz = mix(out_color.xyz,vec3(0.0625),0.5);
 }
@@ -80,4 +86,14 @@ float lagrangian(vec4 x, vec4 dx){
 vec4 hamiltonianGradient(vec4 x, vec4 p){
 	const float eps = 0.001;
 	return (vec4(hamiltonian(x+vec4(eps,0,0,0),p),hamiltonian(x+vec4(0,eps,0,0),p),hamiltonian(x+vec4(0,0,eps,0),p),hamiltonian(x+vec4(0,0,0,eps),p))-hamiltonian(x,p))/eps;
+}
+
+vec4 renullMomentum(mat4 g_inv, vec4 p){
+	float a = g_inv[0].x;
+	vec3 b = g_inv[0].yzw;
+	mat3 C = mat3(g_inv[1].yzw,g_inv[2].yzw,g_inv[3].yzw);
+	float p2 = dot(b,p.yzw)/a;
+	float q = dot(p.yzw,C*p.yzw)/a;
+	float t = -p2-sqrt(p2*p2-q);
+	return vec4(t,p.yzw);
 }
