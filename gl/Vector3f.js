@@ -34,4 +34,11 @@ export default class Vector3f {
 		this.y += v.y;
 		this.z += v.z;
 	}
+
+	/**
+	 * @param {Vector3f} v
+	 */
+	dotProd(v){
+		return this.x*v.x+this.y*v.y+this.z*v.z;
+	}
 }

@@ -1,3 +1,5 @@
+import Vector4f from "./Vector4f.js";
+
 export default class Matrix4f {
 	/**
 	 * @param {number|[number,number,number,number]|[number,number,number,number,number,number,number,number,number,number,number,number,number,number,number,number]} [data]
@@ -105,6 +107,14 @@ export default class Matrix4f {
 		this.m23 = a.m20*b.m03+a.m21*b.m13+a.m22*b.m23+a.m23*b.m33;
 		this.m33 = a.m30*b.m03+a.m31*b.m13+a.m32*b.m23+a.m33*b.m33;
 		return this;
+	}
+
+	/**
+	 * Returns the product of this matrix and the given vector.
+	 * @param {Vector4f} v
+	 */
+	mulVec(v){
+		return new Vector4f(this.m00*v.x+this.m01*v.y+this.m02*v.z+this.m03*v.w,this.m10*v.x+this.m11*v.y+this.m12*v.z+this.m13*v.w,this.m20*v.x+this.m21*v.y+this.m22*v.z+this.m23*v.w,this.m30*v.x+this.m31*v.y+this.m32*v.z+this.m33*v.w);
 	}
 
 	/**

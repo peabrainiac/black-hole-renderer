@@ -6,6 +6,7 @@ import Matrix3f from "./gl/Matrix3f.js";
 import Camera from "./Camera.js";
 import Vector3f from "./gl/Vector3f.js";
 import BlackHoleShader from "./BlackHoleShader.js";
+import {KerrNewmanBlackHole} from "./BlackHoleNumerics.js";
 
 /**
  * The main class responsible for rendering to the WebGL canvas.

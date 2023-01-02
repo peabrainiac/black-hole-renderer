@@ -1,7 +1,4 @@
 import Camera from "./Camera.js";
-import Matrix3f from "./gl/Matrix3f.js";
-import Matrix4f from "./gl/Matrix4f.js";
-import Vector3f from "./gl/Vector3f.js";
 import InputHandler from "./InputHandler.js";
 import Renderer from "./Renderer.js";
 
