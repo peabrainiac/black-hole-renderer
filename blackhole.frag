@@ -14,6 +14,7 @@ uniform samplerCube starMap;
 mat4 metric(vec4 x);
 vec4 hamiltonianGradient(vec4 x, vec4 p);
 vec4 renullMomentum(mat4 g_inv, vec4 p);
+vec4 bezierInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t);
 
 void main(void){
 	vec3 rayDirection = normalize(pass_position-cameraPosition);
@@ -33,19 +34,36 @@ void main(void){
 		float minDistance = clamp(length(x),0.01,0.5);
 
 		int i;
+		vec4 prevX = x;
+		vec4 prevP = p;
 		for (i=0;i<100;i++){
 			float timeStep = 0.1*dot(x.yzw,x.yzw);
-			vec4 prevX = x;
-			vec4 prevP = p;
+			vec4 prevPrevX = prevX;
+			vec4 prevPrevP = prevP;
+			prevX = x;
+			prevP = p;
 			p -= timeStep*hamiltonianGradient(x,p);
 			x += timeStep*inverse(metric(x))*prevP;
 			p = 2.0*normalize(renullMomentum(inverse(metric(x)),p));
 			if (length(x.yzw)<minDistance){
 				break;
 			}else if(length(x.yzw)>simulationRadius){
-				float temp = 1.0-(length(x.yzw)-simulationRadius)/(length(x.yzw)-length(prevX.yzw));
-				x = mix(prevX,x,temp);
-				p = mix(prevP,p,temp);
+				vec3 lastStep = x.yzw-prevX.yzw;
+				vec3 lastStepDirection = normalize(lastStep);
+				// proportion of the last step that was still inside the simulation bubble
+				float t = (dot(lastStepDirection,-prevX.yzw)+sqrt(simulationRadius*simulationRadius-dot(cross(lastStepDirection,-prevX.yzw),cross(lastStepDirection,-prevX.yzw))))/length(lastStep);
+				//float t = 1.0-(length(x.yzw)-simulationRadius)/(length(x.yzw)-length(prevX.yzw));
+				if (i==0){
+					t = t*t;
+				}
+				float nextTimeStep = 0.1*dot(x.yzw,x.yzw);
+				vec4 nextP = p-nextTimeStep*hamiltonianGradient(x,p);
+				vec4 nextX = x+nextTimeStep*inverse(metric(x))*p;
+				nextP = 2.0*normalize(renullMomentum(inverse(metric(nextX)),nextP));
+				//x = mix(prevX,x,t);
+				//p = mix(prevP,p,t);
+				x = bezierInterpolate(prevPrevX,prevX,x,nextX,t);
+				p = bezierInterpolate(prevPrevP,prevP,p,nextP,t);
 				break;
 			}
 		}
@@ -96,4 +114,16 @@ vec4 renullMomentum(mat4 g_inv, vec4 p){
 	float q = dot(p.yzw,C*p.yzw)/a;
 	float t = -p2-sqrt(p2*p2-q);
 	return vec4(t,p.yzw);
+}
+
+// bezier-interpolates between x1 and x2 with the parameter t. note that x0 and x3 are not the usual control points, but the points before x1 and after x2.
+vec4 bezierInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t){
+	//mat4 C = mat4(1,-3,3,-1,0,3,-6,3,0,0,3,-3,0,0,0,1);
+	//return dot(vec4(1,t,t*t,t*t*t),C*vec4(x1,x1+(x2-x0)/6.0,x2-(x3-x1)/6.0,x2));
+	vec4 A = x1;
+	vec4 B = x1+(x2-x0)/6.0;
+	vec4 C = x2-(x3-x1)/6.0;
+	vec4 D = x2;
+	float t2 = 1.0-t;
+	return A*t2*t2*t2+3.0*B*t2*t2*t+3.0*C*t2*t*t+D*t*t*t;
 }
