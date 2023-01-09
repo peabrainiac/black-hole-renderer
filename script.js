@@ -14,11 +14,14 @@ import FpsCounter from "./ui/FpsCounter.js";
 		inputHandler.requestPointerLock();
 	});
 	const camera = new Camera(inputHandler);
+	//camera.position.z = 15;
+	//camera.position.x = 1;
+	//camera._rotation.rotateExp(0,0,Math.PI/2);
 	let prevT;
 	let inGameTime = 0; // time this script has been running in seconds, not counting times when execution was paused by being in another tab etc.
 	while (true){
 		// waits for the next repaint of the browser window - JS equivalent of vsync, basically.
-		let t = await new Promise(requestAnimationFrame);
+		let t = await new Promise(requestAnimationFrame);//await new Promise(resolve=>setTimeout(()=>resolve(Date.now()),5));
 		/** time since the last frame in seconds, capped at 0.25. */
 		let deltaT = Math.min(0.25,(prevT?t-prevT:0)/1000);
 		prevT = t;
