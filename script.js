@@ -1,8 +1,12 @@
 import Camera from "./Camera.js";
 import InputHandler from "./InputHandler.js";
 import Renderer from "./Renderer.js";
+import FpsCounter from "./ui/FpsCounter.js";
 
 (async()=>{
+	const fpsCounter = new FpsCounter();
+	document.body.appendChild(fpsCounter);
+
 	const canvas = document.body.querySelector("canvas");
 	const renderer = new Renderer(canvas);
 	const inputHandler = new InputHandler(canvas);
@@ -22,5 +26,6 @@ import Renderer from "./Renderer.js";
 		camera.update(deltaT);
 		renderer.resize(window.innerWidth,window.innerHeight);
 		renderer.render(camera,inGameTime);
+		fpsCounter.update();
 	}
 })();
