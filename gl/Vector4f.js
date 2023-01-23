@@ -39,6 +39,18 @@ export default class Vector4f {
 		this.y += v.y;
 		this.z += v.z;
 		this.w += v.w;
+		return this;
+	}
+
+	normalize(){
+		let length = Math.hypot(this.x,this.y,this.z,this.w);
+		if (length!==0){
+			this.x /= length;
+			this.y /= length;
+			this.z /= length;
+			this.w /= length;
+		}
+		return this;
 	}
 
 	get yzw(){

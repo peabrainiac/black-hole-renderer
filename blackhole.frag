@@ -30,7 +30,7 @@ void main(void){
 		vec3 intersectionPosition = cameraPosition+intersectionDistance*rayDirection;
 
 		vec4 x = vec4(0,intersectionPosition-centerPosition);
-		vec4 p = metric(x)*vec4(1,rayDirection);
+		vec4 p = metric(x)*vec4(-1,rayDirection);
 		p = normalize(renullMomentum(metricInverse(x),p));
 
 		float minDistance = clamp(length(x),0.01,0.5);
@@ -38,7 +38,7 @@ void main(void){
 		int i;
 		vec4 prevX = x;
 		vec4 prevP = p;
-		for (i=0;i<100;i++){
+		for (i=0;i<200;i++){
 			float timeStep = 0.05*dot(x.yzw,x.yzw);
 			vec4 prevPrevX = prevX;
 			vec4 prevPrevP = prevP;
@@ -71,10 +71,11 @@ void main(void){
 		}
 
 		rayDirection = (metricInverse(x)*p).yzw;
-		out_color = length(x.yzw)<minDistance?vec4(0,0,0,1):texture(starMap,rayDirection);
+		out_color = length(x.yzw)<minDistance||i==200?vec4(0,0,0,1):texture(starMap,rayDirection);
 		//out_color.xyz += vec3(0.01*float(i));
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*dot(p,metricInverse(x)*p)),0.5);
+		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(metricInverse(x)*p).x),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-p.x/temp)),0.5);
 	}
 	//out_color.xyz = mix(out_color.xyz,vec3(0.0625),0.5);
@@ -155,7 +156,7 @@ vec4 renullMomentum(mat4 g_inv, vec4 p){
 	mat3 C = mat3(g_inv[1].yzw,g_inv[2].yzw,g_inv[3].yzw);
 	float p2 = dot(b,p.yzw)/a;
 	float q = dot(p.yzw,C*p.yzw)/a;
-	float t = -p2-sqrt(p2*p2-q);
+	float t = -p2+sqrt(p2*p2-q);
 	return vec4(t,p.yzw);
 }
 
