@@ -8,6 +8,7 @@ out vec4 out_color;
 uniform vec3 centerPosition;
 uniform vec3 cameraPosition;
 uniform float simulationRadius;
+uniform float blackHoleMass;
 
 uniform samplerCube starMap;
 
@@ -33,13 +34,13 @@ void main(void){
 		vec4 p = metric(x)*vec4(-1,rayDirection);
 		p = normalize(renullMomentum(metricInverse(x),p));
 
-		float minDistance = clamp(length(x),0.01,0.5);
+		float minDistance = clamp(length(x),0.1*blackHoleMass,2.0*blackHoleMass);
 
 		int i;
 		vec4 prevX = x;
 		vec4 prevP = p;
 		for (i=0;i<200;i++){
-			float timeStep = 0.05*dot(x.yzw,x.yzw);
+			float timeStep = (0.0125/blackHoleMass)*dot(x.yzw,x.yzw);
 			vec4 prevPrevX = prevX;
 			vec4 prevPrevP = prevP;
 			prevX = x;
@@ -84,7 +85,7 @@ void main(void){
 // Kerr-Newman metric in Kerr-Schild coordinates, taken from https://michaelmoroz.github.io/TracingGeodesics/
 mat4 metric(vec4 x){
 	const float a = 0.0;
-	const float m = 0.25;
+	float m = blackHoleMass;
 	const float Q = 0.0;
 	vec3 p = x.yzw;
 	float rho = dot(p,p) - a*a;
@@ -98,7 +99,7 @@ mat4 metric(vec4 x){
 // inverse of the the Kerr-Newman metric. equivalent to `inverse(metric(x))`, but computed using the Sherman–Morrison formula to avoid the costly call to `inverse()`
 mat4 metricInverse(vec4 x){
 	const float a = 0.0;
-	const float m = 0.25;
+	float m = blackHoleMass;
 	const float Q = 0.0;
 	vec3 p = x.yzw;
 	float rho = dot(p,p) - a*a;
@@ -127,7 +128,7 @@ vec4 hamiltonianGradient(vec4 x, vec4 p){
 // gradient of H in the first argument, computed analytically
 vec4 analyticalHamiltonianGradient(vec4 x, vec4 p){
 	const float a = 0.0;
-	const float m = 0.25;
+	float m = blackHoleMass;
 	const float Q = 0.0;
 	vec3 pos = x.yzw;
 	float rho = dot(pos,pos) - a*a;

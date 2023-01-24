@@ -1,18 +1,34 @@
+import { KerrNewmanBlackHole } from "./BlackHoleNumerics.js";
 import Camera from "./Camera.js";
 import InputHandler from "./InputHandler.js";
 import Renderer from "./Renderer.js";
 import FpsCounter from "./ui/FpsCounter.js";
+import OptionsMenu from "./ui/OptionsMenu.js";
 
 (async()=>{
-	const fpsCounter = new FpsCounter();
-	document.body.appendChild(fpsCounter);
-
 	const canvas = document.body.querySelector("canvas");
-	const renderer = new Renderer(canvas);
 	const inputHandler = new InputHandler(canvas);
-	document.body.addEventListener("click",e=>{
+	const fpsCounter = new FpsCounter();
+	const optionsMenu = new OptionsMenu();
+	document.body.appendChild(fpsCounter);
+	document.body.appendChild(optionsMenu);
+	canvas.addEventListener("click",e=>{
 		inputHandler.requestPointerLock();
 	});
+	inputHandler.onPointerLock(()=>{
+		optionsMenu.hidden = true;
+	});
+	inputHandler.onExitPointerLock(()=>{
+		optionsMenu.hidden = false;
+	});
+	optionsMenu.mass = 0.25;
+
+	const blackHole = new KerrNewmanBlackHole();
+	optionsMenu.onMassChange(mass=>{
+		blackHole.mass = mass;
+	});
+
+	const renderer = new Renderer(canvas);
 	const camera = new Camera(inputHandler);
 	//camera.position.z = 15;
 	//camera.position.x = 1;
@@ -28,7 +44,7 @@ import FpsCounter from "./ui/FpsCounter.js";
 		inGameTime += deltaT;
 		camera.update(deltaT);
 		renderer.resize(window.innerWidth,window.innerHeight);
-		renderer.render(camera,inGameTime);
+		renderer.render(camera,blackHole,inGameTime);
 		fpsCounter.update();
 	}
 })();

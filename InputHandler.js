@@ -11,6 +11,10 @@ export default class InputHandler {
 		this.target.tabIndex = -1;
 		this.keys = {w:false,a:false,s:false,d:false,space:false,shift:false};
 		this._hasPointerLock = false;
+		/** @type {(()=>void)[]} */
+		this._onPointerLockCallbacks = [];
+		/** @type {(()=>void)[]} */
+		this._onExitPointerLockCallbacks = [];
         this._deltaX = 0;
         this._deltaY = 0;
 		document.addEventListener("keydown",(e)=>{
@@ -37,9 +41,15 @@ export default class InputHandler {
 				element = element.shadowRoot.pointerLockElement;
 			}
 			if (element==this.target){
-				this._hasPointerLock = true;
+				if (!this._hasPointerLock){
+					this._hasPointerLock = true;
+					this._onPointerLockCallbacks.forEach(callback=>callback());
+				}
 			}else{
-				this._hasPointerLock = false;
+				if (this._hasPointerLock){
+					this._hasPointerLock = false;
+					this._onExitPointerLockCallbacks.forEach(callback=>callback());
+				}
 				this.keys = {w:false,a:false,s:false,d:false,space:false,shift:false};
 			}
 		});
@@ -65,6 +75,28 @@ export default class InputHandler {
 
 	exitPointerLock(){
 		document.exitPointerLock();
+	}
+
+	/**
+	 * Calls the given function whenever the element receives pointer lock, and once immediately if it already has it when this function is called.
+	 * @param {()=>void} callback
+	 */
+	onPointerLock(callback){
+		this._onPointerLockCallbacks.push(callback);
+		if (this._hasPointerLock){
+			callback();
+		}
+	}
+
+	/**
+	 * Calls the given function whenever the element exits pointer lock, and once immediately if it already doesn't have it when this function is called.
+	 * @param {()=>void} callback
+	 */
+	onExitPointerLock(callback){
+		this._onExitPointerLockCallbacks.push(callback);
+		if (!this._hasPointerLock){
+			callback();
+		}
 	}
 
     /**

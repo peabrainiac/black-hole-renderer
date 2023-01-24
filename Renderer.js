@@ -36,9 +36,10 @@ export default class Renderer {
 	/**
 	 * Renders one frame to the canvas.
 	 * @param {Camera} camera
+	 * @param {KerrNewmanBlackHole} blackHole
 	 * @param {number} t
 	 */
-	render(camera,t){
+	render(camera,blackHole,t){
 		let viewMatrix = camera.viewMatrix;
 		this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
 		this._gl.clear(this._gl.COLOR_BUFFER_BIT|this._gl.DEPTH_BUFFER_BIT);
@@ -56,9 +57,11 @@ export default class Renderer {
 		this._blackHoleShader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
 		this._blackHoleShader.uniforms.centerPosition = new Vector3f(2,0,15);
 		this._blackHoleShader.uniforms.cameraPosition = camera.position;
+		this._blackHoleShader.uniforms.blackHoleMass = blackHole.mass;
 		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
 		this._starBox.cubeMap.bind();
 		this._blackHoleCube.render();
+		//console.log(Math.hypot(camera.position.x-2,camera.position.y,camera.position.z-15));
 	}
 
 	/**
