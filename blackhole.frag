@@ -34,9 +34,9 @@ void main(void){
 
 		vec4 x = vec4(0,intersectionPosition-centerPosition);
 		vec4 p = metric(x)*vec4(-1,rayDirection);
-		p = normalize(renullMomentum(metricInverse(x),p));
+		p = 2.0*normalize(renullMomentum(metricInverse(x),p));
 
-		float minDistance = clamp(length(x),0.1*blackHoleMass,2.0*blackHoleMass);
+		float minSpatialVelocity = 0.75;
 
 		int i;
 		vec4 prevX = x;
@@ -50,7 +50,7 @@ void main(void){
 			p -= timeStep*analyticalHamiltonianGradient(x,p);
 			x += timeStep*metricInverse(x)*prevP;
 			p = 2.0*normalize(renullMomentum(metricInverse(x),p));
-			if (length(x.yzw)<minDistance){
+			if (length((metricInverse(x)*p).yzw)<minSpatialVelocity){
 				break;
 			}else if(length(x.yzw)>simulationRadius){
 				vec3 lastStep = x.yzw-prevX.yzw;
@@ -59,7 +59,7 @@ void main(void){
 				float t = (dot(lastStepDirection,-prevX.yzw)+sqrt(simulationRadius*simulationRadius-dot(cross(lastStepDirection,-prevX.yzw),cross(lastStepDirection,-prevX.yzw))))/length(lastStep);
 				//float t = 1.0-(length(x.yzw)-simulationRadius)/(length(x.yzw)-length(prevX.yzw));
 				if (i==0){
-					t = t*t;
+					t = t*t*(2.0-t);
 				}
 				float nextTimeStep = 0.1*dot(x.yzw,x.yzw);
 				vec4 nextP = p-nextTimeStep*analyticalHamiltonianGradient(x,p);
@@ -74,11 +74,12 @@ void main(void){
 		}
 
 		rayDirection = (metricInverse(x)*p).yzw;
-		out_color = length(x.yzw)<minDistance||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
-		//out_color.xyz += vec3(0.01*float(i));
+		out_color = length((metricInverse(x)*p).yzw)<minSpatialVelocity||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
+		//out_color.xyz += vec3(float(i)/float(steps));
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*dot(p,metricInverse(x)*p)),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(metricInverse(x)*p).x),0.5);
+		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*length((metricInverse(x)*p).yzw)),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-p.x/temp)),0.5);
 	}
 	//out_color.xyz = mix(out_color.xyz,vec3(0.0625),0.5);

@@ -23,7 +23,7 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 		optionsMenu.hidden = false;
 	});
 	optionsMenu.mass = 0.25;
-	optionsMenu.steps = 200;
+	optionsMenu.steps = 250;
 	optionsMenu.stepSize = 1;
 
 	const renderer = new Renderer(canvas);
