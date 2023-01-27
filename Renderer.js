@@ -31,6 +31,8 @@ export default class Renderer {
 		this._blackHoleSimulationRadius = 10;
 		this._blackHoleCube = Vao.createCube(this._gl,new Matrix3f());
 		this._blackHoleShader = new BlackHoleShader(this._gl);
+		this._steps = 100;
+		this._stepSize = 1;
 	}
 
 	/**
@@ -58,6 +60,8 @@ export default class Renderer {
 		this._blackHoleShader.uniforms.centerPosition = new Vector3f(2,0,15);
 		this._blackHoleShader.uniforms.cameraPosition = camera.position;
 		this._blackHoleShader.uniforms.blackHoleMass = blackHole.mass;
+		this._blackHoleShader.uniforms.steps = this._steps;
+		this._blackHoleShader.uniforms.stepSize = this._stepSize;
 		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
 		this._starBox.cubeMap.bind();
 		this._blackHoleCube.render();
@@ -77,5 +81,21 @@ export default class Renderer {
 			this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
 			this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,50);
 		}
+	}
+
+	get steps(){
+		return this._steps;
+	}
+
+	set steps(steps){
+		this._steps = steps;
+	}
+
+	get stepSize(){
+		return this._stepSize;
+	}
+
+	set stepSize(stepSize){
+		this._stepSize = stepSize;
 	}
 }

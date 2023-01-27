@@ -1,5 +1,6 @@
 import { KerrNewmanBlackHole } from "./BlackHoleNumerics.js";
 import Camera from "./Camera.js";
+import Vector3f from "./gl/Vector3f.js";
 import InputHandler from "./InputHandler.js";
 import Renderer from "./Renderer.js";
 import FpsCounter from "./ui/FpsCounter.js";
@@ -22,13 +23,21 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 		optionsMenu.hidden = false;
 	});
 	optionsMenu.mass = 0.25;
+	optionsMenu.steps = 200;
+	optionsMenu.stepSize = 1;
 
+	const renderer = new Renderer(canvas);
 	const blackHole = new KerrNewmanBlackHole();
 	optionsMenu.onMassChange(mass=>{
 		blackHole.mass = mass;
 	});
+	optionsMenu.onStepsChange(steps=>{
+		renderer.steps = steps;
+	});
+	optionsMenu.onStepSizeChange(stepSize=>{
+		renderer.stepSize = stepSize;
+	});
 
-	const renderer = new Renderer(canvas);
 	const camera = new Camera(inputHandler);
 	//camera.position.z = 15;
 	//camera.position.x = 1;
@@ -43,6 +52,7 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 		prevT = t;
 		inGameTime += deltaT;
 		camera.update(deltaT);
+		optionsMenu.currentDistance = camera.position.copy().add(new Vector3f(2,0,15).scale(-1)).length;
 		renderer.resize(window.innerWidth,window.innerHeight);
 		renderer.render(camera,blackHole,inGameTime);
 		fpsCounter.update();

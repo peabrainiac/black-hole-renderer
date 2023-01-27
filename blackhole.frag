@@ -9,6 +9,8 @@ uniform vec3 centerPosition;
 uniform vec3 cameraPosition;
 uniform float simulationRadius;
 uniform float blackHoleMass;
+uniform int steps;
+uniform float stepSize;
 
 uniform samplerCube starMap;
 
@@ -39,8 +41,8 @@ void main(void){
 		int i;
 		vec4 prevX = x;
 		vec4 prevP = p;
-		for (i=0;i<200;i++){
-			float timeStep = (0.0125/blackHoleMass)*dot(x.yzw,x.yzw);
+		for (i=0;i<steps;i++){
+			float timeStep = stepSize*(0.0125/blackHoleMass)*dot(x.yzw,x.yzw);
 			vec4 prevPrevX = prevX;
 			vec4 prevPrevP = prevP;
 			prevX = x;
@@ -72,7 +74,7 @@ void main(void){
 		}
 
 		rayDirection = (metricInverse(x)*p).yzw;
-		out_color = length(x.yzw)<minDistance||i==200?vec4(0,0,0,1):texture(starMap,rayDirection);
+		out_color = length(x.yzw)<minDistance||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
 		//out_color.xyz += vec3(0.01*float(i));
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*dot(p,metricInverse(x)*p)),0.5);
