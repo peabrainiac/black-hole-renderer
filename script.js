@@ -27,7 +27,7 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 	optionsMenu.stepSize = 1;
 
 	const renderer = new Renderer(canvas);
-	const blackHole = new KerrNewmanBlackHole();
+	const blackHole = new KerrNewmanBlackHole(new Vector3f(2,0,15));
 	optionsMenu.onMassChange(mass=>{
 		blackHole.mass = mass;
 	});
@@ -52,7 +52,7 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 		prevT = t;
 		inGameTime += deltaT;
 		camera.update(deltaT);
-		optionsMenu.currentDistance = camera.position.copy().add(new Vector3f(2,0,15).scale(-1)).length;
+		optionsMenu.currentDistance = camera.position.distanceTo(blackHole.position);
 		renderer.resize(window.innerWidth,window.innerHeight);
 		renderer.render(camera,blackHole,inGameTime);
 		fpsCounter.update();

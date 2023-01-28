@@ -52,11 +52,13 @@ export default class BlackHoleNumerics {
  */
 export class KerrNewmanBlackHole {
 	/**
+	 * @param {Vector3f} position
 	 * @param {number} a angular momentum `a=L/M`
 	 * @param {number} mass
 	 * @param {number} charge
 	 */
-	constructor(a=0,mass=1,charge=0){
+	constructor(position=new Vector3f(),a=0,mass=1,charge=0){
+		this.position = position;
 		this.a = a;
 		this.mass = mass;
 		this.charge = charge;
@@ -70,7 +72,7 @@ export class KerrNewmanBlackHole {
 		const a = this.a;
 		const m = this.mass;
 		const Q = this.charge;
-		let p = x.yzw;
+		let p = x.yzw.sub(this.position);
 		let rho = p.dotProd(p)-a*a;
 		let r2 = 0.5*(rho+Math.sqrt(rho*rho+4*a*a*p.z*p.z));
 		let r = Math.sqrt(r2);
@@ -87,7 +89,7 @@ export class KerrNewmanBlackHole {
 		const a = this.a;
 		const m = this.mass;
 		const Q = this.charge;
-		let p = x.yzw;
+		let p = x.yzw.sub(this.position);
 		let rho = p.dotProd(p)-a*a;
 		let r2 = 0.5*(rho+Math.sqrt(rho*rho+4*a*a*p.z*p.z));
 		let r = Math.sqrt(r2);
@@ -107,11 +109,11 @@ export class KerrNewmanBlackHole {
 	}
 
 	/**
-	 * Returns the gradient of H in the first argument, computed numerically
+	 * Returns the gradient of H in the first argument, computed numerically. Pretty much only used to check whether the analytic version is implemented correctly.
 	 * @param {Vector4f} x
 	 * @param {Vector4f} p
 	 */
-	hamiltonianGradient(x,p){
+	hamiltonianGradientEstimate(x,p){
 		const eps = 0.001;
 		return new Vector4f(this.hamiltonian(new Vector4f(eps,0,0,0).add(x),p),this.hamiltonian(new Vector4f(0,eps,0,0).add(x),p),this.hamiltonian(new Vector4f(0,0,eps,0).add(x),p),this.hamiltonian(new Vector4f(0,0,0,eps).add(x),p)).add(new Vector4f(-this.hamiltonian(x,p))).scale(1/eps);
 	}
@@ -125,7 +127,7 @@ export class KerrNewmanBlackHole {
 		const a = this.a;
 		const m = this.mass;
 		const Q = this.charge;
-		let pos = x.yzw;
+		let pos = x.yzw.sub(this.position);
 		let rho = pos.dotProd(pos)-a*a;
 		let gradRho = new Vector4f(0,2*pos.x,2*pos.y,2*pos.z);
 		let r2 = 0.5*(rho+Math.sqrt(rho*rho+4*a*a*pos.z*pos.z));
@@ -159,7 +161,7 @@ export class KerrNewmanBlackHole {
 		let p = BlackHoleNumerics.renullMomentumBackwards(this.metricInverse(x),dir instanceof Vector4f?dir:this.metric(x).mulVec(new Vector4f(-1,dir.x,dir.y,dir.z))).normalize();
 		yield {x,p,u:this.metricInverse(x).mulVec(p)};
 		for (let i=0;i<steps;i++){
-			let timeStep = 0.05*x.yzw.dotProd(x.yzw);
+			let timeStep = 0.05*x.yzw.distanceTo(this.position)**2;
 			let prevX = x;
 			let prevP = p;
 			p = p.copy().add(this.analyticalHamiltonianGradient(prevX,prevP).scale(-timeStep));

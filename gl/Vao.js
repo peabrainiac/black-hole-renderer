@@ -120,7 +120,9 @@ export default class Vao {
 		let lines = fileContents.split("\n");
 		let vertices = lines.filter(line=>line.startsWith("v ")).map(line=>line.split(" ").slice(1)).map(([x,y,z])=>new Vector3f(parseFloat(x),parseFloat(y),parseFloat(z)));
 		let faces = lines.filter(line=>line.startsWith("f ")).map(line=>line.split(" ").slice(1)).map(([i0,i1,i2])=>[parseInt(i0)-1,parseInt(i1)-1,parseInt(i2)-1]);
-		let normals = vertices.map((v,i)=>faces.filter(f=>f.includes(i)).map(([i0,i1,i2])=>vertices[i0].copy().scale(-1).add(vertices[i1]).crossProd(vertices[i0].copy().scale(-1).add(vertices[i2])).normalize()).reduce((n1,n2)=>n1.add(n2)).normalize());
+		/** @type {number[][][]} */
+		let vertexFaces = vertices.map(()=>[]);faces.forEach(face=>face.forEach(i=>vertexFaces[i].push(face)));
+		let normals = vertexFaces.map(faces=>faces.map(([i0,i1,i2])=>vertices[i1].copy().sub(vertices[i0]).crossProd(vertices[i2].copy().sub(vertices[i0])).normalize()).reduce((n1,n2)=>n1.add(n2)).normalize());
 
 		// checks for duplicate vertices with similar normals, and merges them together
 		for (let i=0;i<vertices.length;i++){

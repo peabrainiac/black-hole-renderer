@@ -36,6 +36,16 @@ export default class Vector3f {
 		return this;
 	}
 
+	/**
+	 * @param {Vector3f} v
+	 */
+	sub(v){
+		this.x -= v.x;
+		this.y -= v.y;
+		this.z -= v.z;
+		return this;
+	}
+
 	get length(){
 		return Math.hypot(this.x,this.y,this.z);
 	}

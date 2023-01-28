@@ -59,7 +59,7 @@ export default class Renderer {
 
 		this._blackHoleShader.use();
 		this._blackHoleShader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
-		this._blackHoleShader.uniforms.centerPosition = new Vector3f(2,0,15);
+		this._blackHoleShader.uniforms.centerPosition = blackHole.position;
 		this._blackHoleShader.uniforms.cameraPosition = camera.position;
 		this._blackHoleShader.uniforms.blackHoleMass = blackHole.mass;
 		this._blackHoleShader.uniforms.steps = this._steps;
