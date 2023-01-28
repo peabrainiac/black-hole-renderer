@@ -39,6 +39,7 @@ const fragmentSource = /* glsl */ `
         vec3 normal = normalize(pass_normal);
         vec3 ownColor = vec3(0.0625);
         vec3 reflectionColor = texture(starMap,reflect(pass_relativePosition,normal)).xyz;
+        //vec3 reflectionColor = vec3(max(0.0,-dot(normalize(pass_relativePosition),normal)));
         out_color = vec4(mix(ownColor,reflectionColor,0.4),1.0);
     }
 `;

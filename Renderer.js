@@ -8,6 +8,8 @@ import Vector3f from "./gl/Vector3f.js";
 import BlackHoleShader from "./BlackHoleShader.js";
 import {KerrNewmanBlackHole} from "./BlackHoleNumerics.js";
 
+const teatopModelFile = await (await fetch("./res/teapot.obj")).text()
+
 /**
  * The main class responsible for rendering to the WebGL canvas.
  */
@@ -26,7 +28,7 @@ export default class Renderer {
 		this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,50);
 
 		this._starBox = new StarBox(this._gl);
-		this._cube = Vao.createCube(this._gl,new Matrix3f(0.5));
+		this._teapot = Vao.fromObjFile(this._gl,teatopModelFile);
 		this._shader = new MainShader(this._gl);
 		this._blackHoleSimulationRadius = 10;
 		this._blackHoleCube = Vao.createCube(this._gl,new Matrix3f());
@@ -50,10 +52,10 @@ export default class Renderer {
 		
 		this._shader.use();
 		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
-		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f().rotateExp(0,0.1*t,0.2*t),new Vector3f(-1,0,0));
+		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.1)/*.rotateExp(0,0.1*t,0.2*t)*/,new Vector3f(-1,0,0));
 		this._shader.uniforms.cameraPosition = camera.position;
 		this._starBox.cubeMap.bind();
-		this._cube.render();
+		this._teapot.render();
 
 		this._blackHoleShader.use();
 		this._blackHoleShader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);

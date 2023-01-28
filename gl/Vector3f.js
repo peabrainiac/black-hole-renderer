@@ -40,10 +40,35 @@ export default class Vector3f {
 		return Math.hypot(this.x,this.y,this.z);
 	}
 
+	normalize(){
+		let length = this.length;
+		if (length!==0){
+			this.x /= length;
+			this.y /= length;
+			this.z /= length;
+		}
+		return this;
+	}
+
+	/**
+	 * Euclidean distance to the given vector.
+	 * @param {Vector3f} v
+	 */
+	distanceTo(v){
+		return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z);
+	}
+
 	/**
 	 * @param {Vector3f} v
 	 */
 	dotProd(v){
 		return this.x*v.x+this.y*v.y+this.z*v.z;
+	}
+
+	/**
+	 * @param {Vector3f} v
+	 */
+	crossProd(v){
+		return new Vector3f(this.y*v.z-this.z*v.y,this.z*v.x-this.x*v.z,this.x*v.y-this.y*v.x);
 	}
 }

@@ -5,7 +5,6 @@ import Vector3f from "./Vector3f.js";
  * A simple wrapper for vertex array objects. Partly copied from https://github.com/peabrainiac/peabrainiac.github.io/tree/master/js/gl.
  */
 export default class Vao {
-	
 	/**
 	 * Constructs a new empty VAO.
 	 * @param {WebGL2RenderingContext} gl
@@ -107,6 +106,43 @@ export default class Vao {
 		vao.addIndexBuffer(indices);
 		//vao.addVbo(0,3,[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]].map(([x,y,z])=>transform.mulVec(new Vector3f(x,y,z))).map(v=>[v.x,v.y,v.z]).flat());
 		//vao.addIndexBuffer([5,7,3,3,1,5,6,7,5,5,4,6,3,2,0,0,1,3,6,4,0,0,2,6,5,1,0,0,4,5,7,6,3,3,6,2]);
+		return vao;
+	}
+
+	/**
+	 * Creates a vertex array object from a .obj file, given as a string. The way it is inplemented currently, only vertex and index positions are taken from the file,
+	 * normals are computed by averaging the normals of the triangles a vertex appears in, and texture coordinates are ignored.
+	 * @param {WebGL2RenderingContext} gl
+	 * @param {string} fileContents
+	 */
+	static fromObjFile(gl,fileContents){
+		// extracts vertices and faces from the file and computes normals
+		let lines = fileContents.split("\n");
+		let vertices = lines.filter(line=>line.startsWith("v ")).map(line=>line.split(" ").slice(1)).map(([x,y,z])=>new Vector3f(parseFloat(x),parseFloat(y),parseFloat(z)));
+		let faces = lines.filter(line=>line.startsWith("f ")).map(line=>line.split(" ").slice(1)).map(([i0,i1,i2])=>[parseInt(i0)-1,parseInt(i1)-1,parseInt(i2)-1]);
+		let normals = vertices.map((v,i)=>faces.filter(f=>f.includes(i)).map(([i0,i1,i2])=>vertices[i0].copy().scale(-1).add(vertices[i1]).crossProd(vertices[i0].copy().scale(-1).add(vertices[i2])).normalize()).reduce((n1,n2)=>n1.add(n2)).normalize());
+
+		// checks for duplicate vertices with similar normals, and merges them together
+		for (let i=0;i<vertices.length;i++){
+			let v = vertices[i];
+			/** @type {number[]} */
+			let duplicates = [];
+			for (let i2=i+1;i2<vertices.length;i2++){
+				if (v.distanceTo(vertices[i2])<0.001&&normals[i].dotProd(normals[i2])>0.5){
+					duplicates.push(i2);
+				}
+			}
+			if (duplicates.length>0){
+				normals[i] = [normals[i],...duplicates.map(i2=>normals[i2])].reduce((n1,n2)=>n1.add(n2)).normalize();
+				faces = faces.map(f=>f.map(i2=>duplicates.includes(i2)?i:i2));
+			}
+		}
+
+		// sends the data to the gpu
+		let vao = new Vao(gl);
+		vao.addVbo(0,3,vertices.map(v=>[v.x,v.y,v.z]).flat());
+		vao.addVbo(1,3,normals.map(n=>[n.x,n.y,n.z]).flat());
+		vao.addIndexBuffer(faces.flat());
 		return vao;
 	}
 }
