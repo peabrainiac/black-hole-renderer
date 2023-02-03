@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 
-in vec3 pass_position;
+in vec3 pass_direction;
 
 out vec4 out_color;
 
@@ -11,6 +11,9 @@ uniform float simulationRadius;
 uniform float blackHoleMass;
 uniform int steps;
 uniform float stepSize;
+
+uniform sampler2D imageColors;
+uniform sampler2D imageRayData;
 
 uniform samplerCube starMap;
 
@@ -22,15 +25,19 @@ vec4 renullMomentum(mat4 g_inv, vec4 p);
 vec4 bezierInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t);
 
 void main(void){
-	vec3 rayDirection = normalize(pass_position-cameraPosition);
-	vec3 relativeCenterPosition = centerPosition-cameraPosition;
+	vec4 pixelColor = texelFetch(imageColors,ivec2(gl_FragCoord.xy),0);
+	vec4 pixelRayData = texelFetch(imageRayData,ivec2(gl_FragCoord.xy),0);
+
+	vec3 rayDirection = pixelRayData.w==0.0?normalize(pass_direction):normalize(pixelRayData.xyz);
+	vec3 rayPosition = cameraPosition+rayDirection*pixelRayData.w;
+	vec3 relativeCenterPosition = centerPosition-rayPosition;
 	float rayCenterDistance = length(cross(rayDirection,relativeCenterPosition));
 	if(rayCenterDistance>=simulationRadius||(length(relativeCenterPosition)>=simulationRadius&&dot(rayDirection,relativeCenterPosition)<=0.0)){
-		out_color = texture(starMap,pass_position-cameraPosition);
+		out_color = texture(starMap,rayDirection);
 	}else{
 		// distance to & position of the nearest intersection of the ray with the simulation sphere around the black hole
 		float intersectionDistance = max(0.0,dot(rayDirection,relativeCenterPosition)-sqrt(simulationRadius*simulationRadius-rayCenterDistance*rayCenterDistance));
-		vec3 intersectionPosition = cameraPosition+intersectionDistance*rayDirection;
+		vec3 intersectionPosition = rayPosition+intersectionDistance*rayDirection;
 
 		vec4 x = vec4(0,intersectionPosition-centerPosition);
 		vec4 p = metric(x)*vec4(-1,rayDirection);
@@ -83,6 +90,8 @@ void main(void){
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-p.x/temp)),0.5);
 	}
 	//out_color.xyz = mix(out_color.xyz,vec3(0.0625),0.5);
+
+	out_color = vec4(mix(out_color.rgb,pixelColor.rgb,pixelColor.a),1);
 }
 
 // Kerr-Newman metric in Kerr-Schild coordinates, taken from https://michaelmoroz.github.io/TracingGeodesics/

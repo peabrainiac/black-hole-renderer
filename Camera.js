@@ -17,6 +17,7 @@ export default class Camera{
 	 * @param {number} deltaT time since last frame in seconds
 	 */
 	update(deltaT){
+		deltaT *= 0.25;
 		let rx = this._inputHandler.getMouseDeltaX()/500;
 		let ry = this._inputHandler.getMouseDeltaY()/500;
 		let dx = 2*(+this._inputHandler.keys.d-(+this._inputHandler.keys.a))*deltaT;

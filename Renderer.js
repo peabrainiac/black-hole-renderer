@@ -7,6 +7,8 @@ import Camera from "./Camera.js";
 import Vector3f from "./gl/Vector3f.js";
 import BlackHoleShader from "./BlackHoleShader.js";
 import {KerrNewmanBlackHole} from "./BlackHoleNumerics.js";
+import Framebuffer from "./gl/FrameBuffer.js";
+import Texture from "./gl/Texture.js";
 
 const teatopModelFile = await (await fetch("./res/teapot.obj")).text()
 
@@ -21,17 +23,32 @@ export default class Renderer {
 	constructor(canvas){
 		this._canvas = canvas;
 		this._gl = canvas.getContext("webgl2",{preserveDrawingBuffer:true});
-		this._gl.enable(this._gl.DEPTH_TEST);
+		this._gl.getExtension("EXT_color_buffer_float");
 		this._gl.clearDepth(0);
 		this._gl.depthFunc(this._gl.GREATER);
-		this._gl.clearColor(0.4,0.2,0,1);
 		this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,50);
 
+		this._defaultBuffer = new Framebuffer(this._gl,this._canvas.width,this._canvas.height,null);
+
+		/**
+		 * framebuffer that objects like the teapot are first rendered to. contains one color buffer for the color of the objects (with the alpha channel encoding reflexivity),
+		 * a second color buffer containing the direction of the reflected ray (with the alpha value encoding the length the ray already travelled before getting reflected),
+		 * and a depth buffer.
+		 */
+		this._framebuffer = new Framebuffer(this._gl,this._canvas.width,this._canvas.height);
+		this._colors = new Texture(this._gl);
+		this._colors.setFormat(this._gl.RGBA8,this._gl.RGBA,this._canvas.width,this._canvas.height,this._gl.UNSIGNED_BYTE);
+		this._framebuffer.attachTexture(this._colors,this._gl.COLOR_ATTACHMENT0);
+		this._rayData = new Texture(this._gl);
+		this._rayData.setFormat(this._gl.RGBA32F,this._gl.RGBA,this._canvas.width,this._canvas.height,this._gl.FLOAT);
+		this._framebuffer.attachTexture(this._rayData,this._gl.COLOR_ATTACHMENT1);
+		this._framebuffer.attachDepthBuffer();
+
+		this._cube = Vao.createCube(this._gl);
 		this._starBox = new StarBox(this._gl);
 		this._teapot = Vao.fromObjFile(this._gl,teatopModelFile);
 		this._shader = new MainShader(this._gl);
 		this._blackHoleSimulationRadius = 10;
-		this._blackHoleCube = Vao.createCube(this._gl,new Matrix3f());
 		this._blackHoleShader = new BlackHoleShader(this._gl);
 		this._steps = 100;
 		this._stepSize = 1;
@@ -45,29 +62,49 @@ export default class Renderer {
 	 */
 	render(camera,blackHole,t){
 		let viewMatrix = camera.viewMatrix;
-		this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
-		this._gl.clear(this._gl.COLOR_BUFFER_BIT|this._gl.DEPTH_BUFFER_BIT);
-		this._starBox.render(viewMatrix,this._projectionMatrix);
+		let viewDirection = viewMatrix.copy();
+		viewDirection.m03 = 0;
+		viewDirection.m13 = 0;
+		viewDirection.m23 = 0;
+
+		this._framebuffer.setSize(this._canvas.width,this._canvas.height);
+		this._framebuffer.bind();
+		this._gl.drawBuffers([this._gl.COLOR_ATTACHMENT0,this._gl.COLOR_ATTACHMENT1]);
+		this._framebuffer.clearAttachment(0,0,0,0,0);
+		this._framebuffer.clearAttachment(1,0,0,0,0);
 		this._gl.clear(this._gl.DEPTH_BUFFER_BIT);
-		
+
+		this._gl.enable(this._gl.DEPTH_TEST);
+
 		this._shader.use();
 		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
-		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.1)/*.rotateExp(0,0.1*t,0.2*t)*/,new Vector3f(-1,0,0));
+		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.25)/*.rotateExp(0,0.1*t,0.2*t)*/,new Vector3f(-1,0,0));
 		this._shader.uniforms.cameraPosition = camera.position;
 		this._starBox.cubeMap.bind();
 		this._teapot.render();
 
+		this._gl.disable(this._gl.DEPTH_TEST);
+
+		this._defaultBuffer.setSize(this._canvas.width,this._canvas.height);
+		this._defaultBuffer.bind();
+		this._defaultBuffer.clearAttachment(0,1,0.25,0,0);
+
 		this._blackHoleShader.use();
-		this._blackHoleShader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
+		this._blackHoleShader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewDirection);
 		this._blackHoleShader.uniforms.centerPosition = blackHole.position;
 		this._blackHoleShader.uniforms.cameraPosition = camera.position;
 		this._blackHoleShader.uniforms.blackHoleMass = blackHole.mass;
 		this._blackHoleShader.uniforms.steps = this._steps;
 		this._blackHoleShader.uniforms.stepSize = this._stepSize;
 		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
-		this._starBox.cubeMap.bind();
-		this._blackHoleCube.render();
-		//console.log(Math.hypot(camera.position.x-2,camera.position.y,camera.position.z-15));
+		
+		this._gl.activeTexture(this._gl.TEXTURE0);
+		this._gl.bindTexture(this._gl.TEXTURE_2D,this._colors.id);
+		this._gl.activeTexture(this._gl.TEXTURE1);
+		this._gl.bindTexture(this._gl.TEXTURE_2D,this._rayData.id);
+		this._gl.activeTexture(this._gl.TEXTURE2);
+		this._starBox.cubeMap.bind()
+		this._cube.render();
 	}
 
 	/**
@@ -81,7 +118,7 @@ export default class Renderer {
 			this._canvas.width = width;
 			this._canvas.height = height;
 			this._gl.viewport(0,0,this._canvas.width,this._canvas.height);
-			this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.1,50);
+			this._projectionMatrix = Matrix4f.projectionMatrix(1.25,this._canvas.width/this._canvas.height,0.01,50);
 		}
 	}
 
