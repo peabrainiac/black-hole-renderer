@@ -39,8 +39,9 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 	});
 
 	const camera = new Camera(inputHandler);
-	//camera.position.z = 15;
-	//camera.position.x = 1;
+	camera.position.z = 12;
+	camera.position.y = 0.25;
+	camera.position.x = 1;
 	//camera._rotation.rotateExp(0,0,Math.PI/2);
 	let prevT;
 	let inGameTime = 0; // time this script has been running in seconds, not counting times when execution was paused by being in another tab etc.

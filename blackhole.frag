@@ -9,6 +9,9 @@ uniform vec3 centerPosition;
 uniform vec3 cameraPosition;
 uniform float simulationRadius;
 uniform float blackHoleMass;
+uniform float innerAccretionDiskRadius;
+uniform float outerAccretionDiskRadius;
+uniform float accretionDiskHeight;
 uniform int steps;
 uniform float stepSize;
 
@@ -22,7 +25,8 @@ mat4 metricInverse(vec4 x);
 vec4 hamiltonianGradient(vec4 x, vec4 p);
 vec4 analyticalHamiltonianGradient(vec4 x, vec4 p);
 vec4 renullMomentum(mat4 g_inv, vec4 p);
-vec4 bezierInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t);
+vec4 catmullRomInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t);
+float sampleVolume(in vec3 p, out vec3 c, out vec3 e);
 
 void main(void){
 	vec4 pixelColor = texelFetch(imageColors,ivec2(gl_FragCoord.xy),0);
@@ -42,6 +46,8 @@ void main(void){
 		vec4 x = vec4(0,intersectionPosition-centerPosition);
 		vec4 p = metric(x)*vec4(-1,rayDirection);
 		p = 2.0*normalize(renullMomentum(metricInverse(x),p));
+
+		vec4 integratedVolumeColor = vec4(0.0);
 
 		float minSpatialVelocity = 0.75;
 
@@ -74,14 +80,25 @@ void main(void){
 				nextP = 2.0*normalize(renullMomentum(metricInverse(nextX),nextP));
 				//x = mix(prevX,x,t);
 				//p = mix(prevP,p,t);
-				x = bezierInterpolate(prevPrevX,prevX,x,nextX,t);
-				p = bezierInterpolate(prevPrevP,prevP,p,nextP,t);
+				x = catmullRomInterpolate(prevPrevX,prevX,x,nextX,t);
+				p = catmullRomInterpolate(prevPrevP,prevP,p,nextP,t);
 				break;
+			}
+			for (int j=0;j<8;j++){
+				float t = float(j)/8.0;
+				vec3 pos = mix(prevX,x,t).yzw;
+				if (length(pos.xz)>innerAccretionDiskRadius&&pos.y*pos.y<accretionDiskHeight){
+					vec3 volumeColor;
+					vec3 volumeEmittance;
+					float density = sampleVolume(pos,volumeColor,volumeEmittance);
+					integratedVolumeColor += 0.125*(1.0-integratedVolumeColor.a)*0.1*timeStep*(vec4(volumeEmittance,0)+density*vec4(volumeColor,1));
+				}
 			}
 		}
 
 		rayDirection = (metricInverse(x)*p).yzw;
-		out_color = length((metricInverse(x)*p).yzw)<minSpatialVelocity||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
+		vec4 temp = length((metricInverse(x)*p).yzw)<minSpatialVelocity||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
+		out_color = mix(temp,integratedVolumeColor,integratedVolumeColor.a);
 		//out_color.xyz += vec3(float(i)/float(steps));
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*dot(p,metricInverse(x)*p)),0.5);
@@ -173,8 +190,8 @@ vec4 renullMomentum(mat4 g_inv, vec4 p){
 	return vec4(t,p.yzw);
 }
 
-// bezier-interpolates between x1 and x2 with the parameter t. note that x0 and x3 are not the usual control points, but the points before x1 and after x2.
-vec4 bezierInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t){
+// catmull-rom-interpolates between x1 and x2 with the parameter t.
+vec4 catmullRomInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t){
 	//mat4 C = mat4(1,-3,3,-1,0,3,-6,3,0,0,3,-3,0,0,0,1);
 	//return dot(vec4(1,t,t*t,t*t*t),C*vec4(x1,x1+(x2-x0)/6.0,x2-(x3-x1)/6.0,x2));
 	vec4 A = x1;
@@ -183,4 +200,138 @@ vec4 bezierInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t){
 	vec4 D = x2;
 	float t2 = 1.0-t;
 	return A*t2*t2*t2+3.0*B*t2*t2*t+3.0*C*t2*t*t+D*t*t*t;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * *
+ * code defining the accretion disk, mostly        *
+ * based on https://www.shadertoy.com/view/flcXW4  *
+ * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+// https://www.shadertoy.com/view/4djSRW
+vec4 hash44(vec4 p4){
+	p4  = fract( p4 * vec4(0.1031, 0.1030, 0.0973, 0.1099) );
+	p4 += dot(p4, p4.wzxy + 33.33);
+	return fract( (p4.xxyz + p4.yzzw) * p4.zywx);
+}
+
+float noise(vec3 p, int octave){
+	#ifdef USE_GRADIENT_NOISE
+	// Inigo Quilez Gradient Noise
+	// https://www.shadertoy.com/view/Xsl3Dl
+
+	vec3 f = fract(p);
+	vec3 i = floor(p);
+
+	vec3 s = smoothstep(0.0, 1.0, f);
+
+	vec3 h0 = hash44( vec4(i + vec3(0, 0, 0), octave) ).xyz;
+	vec3 h1 = hash44( vec4(i + vec3(1, 0, 0), octave) ).xyz;
+	vec3 h2 = hash44( vec4(i + vec3(0, 1, 0), octave) ).xyz;
+	vec3 h3 = hash44( vec4(i + vec3(1, 1, 0), octave) ).xyz;
+	vec3 h4 = hash44( vec4(i + vec3(0, 0, 1), octave) ).xyz;
+	vec3 h5 = hash44( vec4(i + vec3(1, 0, 1), octave) ).xyz;
+	vec3 h6 = hash44( vec4(i + vec3(0, 1, 1), octave) ).xyz;
+	vec3 h7 = hash44( vec4(i + vec3(1, 1, 1), octave) ).xyz;
+
+	float v0 = dot( h0, f - vec3(0, 0, 0) );
+	float v1 = dot( h1, f - vec3(1, 0, 0) );
+	float v2 = dot( h2, f - vec3(0, 1, 0) );
+	float v3 = dot( h3, f - vec3(1, 1, 0) );
+	float v4 = dot( h4, f - vec3(0, 0, 1) );
+	float v5 = dot( h5, f - vec3(1, 0, 1) );
+	float v6 = dot( h6, f - vec3(0, 1, 1) );
+	float v7 = dot( h7, f - vec3(1, 1, 1) );
+
+	return smoothstep(-0.5, 0.5, mix(
+	mix(mix(v0, v1, s.x), mix(v2, v3, s.x), s.y),
+	mix(mix(v4, v5, s.x), mix(v6, v7, s.x), f.y),
+	s.z)
+	);
+	#else
+	
+	vec3 f = fract(p);
+	vec3 i = floor(p);
+
+	vec3 s = smoothstep(0.0, 1.0, f);
+
+	float t0 = hash44( vec4(i + vec3(0, 0, 0), octave) ).x;
+	float t1 = hash44( vec4(i + vec3(1, 0, 0), octave) ).x;
+	float t2 = hash44( vec4(i + vec3(0, 1, 0), octave) ).x;
+	float t3 = hash44( vec4(i + vec3(1, 1, 0), octave) ).x;
+	float t4 = hash44( vec4(i + vec3(0, 0, 1), octave) ).x;
+	float t5 = hash44( vec4(i + vec3(1, 0, 1), octave) ).x;
+	float t6 = hash44( vec4(i + vec3(0, 1, 1), octave) ).x;
+	float t7 = hash44( vec4(i + vec3(1, 1, 1), octave) ).x;
+
+	return mix(
+	mix(mix(t0, t1, s.x), mix(t2, t3, s.x), s.y),
+	mix(mix(t4, t5, s.x), mix(t6, t7, s.x), f.y),
+	s.z);
+	#endif
+}
+
+// also taken from https://www.shadertoy.com/view/flcXW4, where it is cited with the following comment:
+// > idk what to cite, here are some shaders that all use this
+// > https://www.shadertoy.com/view/tsKczy
+// > https://www.shadertoy.com/view/MslSDl
+// > https://www.shadertoy.com/view/MttyzB
+vec3 blackbodyRGB(float t){
+	// https://en.wikipedia.org/wiki/Planckian_locus
+	float u = (0.860117757 + 1.54118254E-4 * t + 1.28641212E-7 * t * t) / (1.0 + 8.42420235E-4 * t + 7.08145163E-7 * t * t);
+	float v = (0.317398726 + 4.22806245E-5 * t + 4.20481691E-8 * t * t) / (1.0 - 2.89741816E-5 * t + 1.61456053E-7 * t * t);
+
+	// https://en.wikipedia.org/wiki/CIE_1960_color_space
+	// https://en.wikipedia.org/wiki/XYZ_color_space
+
+	// some weird color space -> xyz -> sRGB
+	vec2 xyy = vec2(3.0 * u, 2.0 * v) / (2.0 * u - 8.0 * v + 4.0);
+	vec3 xyz = vec3(xyy.x / xyy.y, 1.0, (1.0 - xyy.x - xyy.y) / xyy.y);
+	vec3 rgb = xyz*mat3(3.240,-1.537,-0.499,-0.969,1.876,0.042,0.056,-0.204,1.057);
+	return rgb;
+}
+
+vec2 rotate(vec2 vector, float theta) {
+	float s = sin(theta), c = cos(theta);
+	return vec2(vector.x * c - vector.y * s, vector.x * s + vector.y * c);
+}
+
+// Fractal Brownian Motion
+float fbm(vec3 p, int iter){
+	float value = 0.0;
+	float accum = 0.0;
+	float atten = 0.5;
+	float scale = 1.0;
+
+	for(int i = 0; i < iter; i++){
+		value += atten * noise(scale * p, iter);
+		accum += atten;
+		atten *= 0.5;
+		scale *= 2.5;
+	}
+
+	return accum != 0.0 ? value / accum : value;
+}
+
+// taken from https://www.shadertoy.com/view/flcXW4
+float sampleVolume(in vec3 p, out vec3 c, out vec3 e) {
+	c = vec3(0.3, 0.2, 0.1);
+	e = vec3(0);
+
+	if(dot(p.xz,p.xz)<innerAccretionDiskRadius*innerAccretionDiskRadius||dot(p.xz,p.xz)>outerAccretionDiskRadius*outerAccretionDiskRadius || p.y * p.y > 0.3 * 0.3){
+		return 0.0;
+	}
+
+	float n0 = fbm(10.0 * vec3(rotate( p.xz, 0.0*(8.0 * p.y) + 0.0*( 4.0 * length(p.xz) ) ), p.y).xzy, 2);
+
+	float d_falloff = length(vec3(0.12, 7.50, 0.12) * p)-0.4;
+	float e_falloff = length(vec3(0.20, 8.00, 0.20) * p)-0.4;
+
+	float t = 0.5;//rand();
+	e = blackbodyRGB( (4000.0 * t * t) + 2000.0 );
+	e = clamp(e / max(max(max(e.r, e.g), e.b), 0.01), 0.0, 1.0);
+
+	//e *= 128.0 * max(n0 - e_falloff, 0.0) / (pow(dot_p(0.5 * p), 1.5) + 0.05);
+	e *= 128.0 * max(n0 - e_falloff, 0.0) / (dot(0.5*p,0.5*p) + 0.05);
+
+	return 128.0 * max(n0 - d_falloff, 0.0);
 }

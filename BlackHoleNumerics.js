@@ -64,6 +64,14 @@ export class KerrNewmanBlackHole {
 		this.charge = charge;
 	}
 
+	get schwarzschildRadius(){
+		return 2*this.mass;
+	}
+
+	get photonSphereRadius(){
+		return 6*this.mass;
+	}
+
 	/**
 	 * Covariant metric tensor g_ij at position x.
 	 * @param {Vector4f} x
