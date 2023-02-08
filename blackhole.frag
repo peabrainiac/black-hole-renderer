@@ -84,14 +84,24 @@ void main(void){
 				p = catmullRomInterpolate(prevPrevP,prevP,p,nextP,t);
 				break;
 			}
-			for (int j=0;j<8;j++){
-				float t = float(j)/8.0;
-				vec3 pos = mix(prevX,x,t).yzw;
-				if (length(pos.xz)>innerAccretionDiskRadius&&pos.y*pos.y<accretionDiskHeight){
-					vec3 volumeColor;
-					vec3 volumeEmittance;
-					float density = sampleVolume(pos,volumeColor,volumeEmittance);
-					integratedVolumeColor += 0.125*(1.0-integratedVolumeColor.a)*0.1*timeStep*(vec4(volumeEmittance,0)+density*vec4(volumeColor,1));
+			// if within the bounding box (or rather, bounding hollow cylinder) of the accretion disk, samples its density at several substeps along the previous step.
+			// the number of substeps is computed dynamically and depends on both the spatial length of the previous step and the number of steps so far.
+			float lastStepLength = length(x.yzw-prevX.yzw);
+			if ((x.yzw.y*prevX.yzw.y<0.0||min(abs(x.yzw.y),abs(prevX.yzw.y))<accretionDiskHeight)&&max(dot(x.yzw.xz,x.yzw.xz),dot(prevX.yzw.xz,prevX.yzw.xz))>innerAccretionDiskRadius*innerAccretionDiskRadius){
+				int subSteps = int(clamp(max(32.0,64.0-8.0*float(i))*lastStepLength,4.0,32.0));
+				float subStepWheight = 1.0/float(subSteps);
+				for (int j=0;j<subSteps;j++){
+					float t = subStepWheight*float(j);
+					vec3 pos = mix(prevX,x,t).yzw;
+					if (length(pos.xz)>innerAccretionDiskRadius&&pos.y*pos.y<accretionDiskHeight){
+						vec3 volumeColor;
+						vec3 volumeEmittance;
+						float density = sampleVolume(pos,volumeColor,volumeEmittance);
+						integratedVolumeColor += subStepWheight*0.15*lastStepLength*(1.0-integratedVolumeColor.a)*(vec4(volumeEmittance,0)+density*vec4(volumeColor,1));
+					}
+				}
+				if (integratedVolumeColor.a>0.995){
+					break;
 				}
 			}
 		}
@@ -99,6 +109,7 @@ void main(void){
 		rayDirection = (metricInverse(x)*p).yzw;
 		vec4 temp = length((metricInverse(x)*p).yzw)<minSpatialVelocity||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
 		out_color = mix(temp,integratedVolumeColor,integratedVolumeColor.a);
+		// several debug overlays, currently unused
 		//out_color.xyz += vec3(float(i)/float(steps));
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*dot(p,metricInverse(x)*p)),0.5);
@@ -317,21 +328,19 @@ float sampleVolume(in vec3 p, out vec3 c, out vec3 e) {
 	c = vec3(0.3, 0.2, 0.1);
 	e = vec3(0);
 
-	if(dot(p.xz,p.xz)<innerAccretionDiskRadius*innerAccretionDiskRadius||dot(p.xz,p.xz)>outerAccretionDiskRadius*outerAccretionDiskRadius || p.y * p.y > 0.3 * 0.3){
+	if(dot(p.xz,p.xz)<innerAccretionDiskRadius*innerAccretionDiskRadius||dot(p.xz,p.xz)>outerAccretionDiskRadius*outerAccretionDiskRadius||p.y*p.y>accretionDiskHeight*accretionDiskHeight){
 		return 0.0;
 	}
 
-	float n0 = fbm(10.0 * vec3(rotate( p.xz, 0.0*(8.0 * p.y) + 0.0*( 4.0 * length(p.xz) ) ), p.y).xzy, 2);
+	float n0 = fbm(10.0 * vec3(rotate( p.xz, 0.1*(8.0 * p.y) + 0.1*( 4.0 * length(p.xz) ) ), p.y).xzy, 2);
 
-	float d_falloff = length(vec3(0.12, 7.50, 0.12) * p)-0.4;
-	float e_falloff = length(vec3(0.20, 8.00, 0.20) * p)-0.4;
+	float relativeR = (length(p.xz)-innerAccretionDiskRadius)/(outerAccretionDiskRadius-innerAccretionDiskRadius);
+	float t = max(0.0,1.0-length(vec2(2.0*(relativeR*(2.0-relativeR))-1.0,p.y/accretionDiskHeight)));
 
-	float t = 0.5;//rand();
-	e = blackbodyRGB( (4000.0 * t * t) + 2000.0 );
-	e = clamp(e / max(max(max(e.r, e.g), e.b), 0.01), 0.0, 1.0);
+	e = blackbodyRGB(500.0+3000.0*(1.0-relativeR)*(1.0-relativeR));
+	e = clamp(e / max(max(max(e.r, e.g), e.b), 2.0), 0.0, 1.0);
 
-	//e *= 128.0 * max(n0 - e_falloff, 0.0) / (pow(dot_p(0.5 * p), 1.5) + 0.05);
-	e *= 128.0 * max(n0 - e_falloff, 0.0) / (dot(0.5*p,0.5*p) + 0.05);
+	e *= 128.0 * max(t*n0*(1.0-relativeR)*max(1.0-1.5*relativeR,0.0), 0.0) / (dot(0.5*p,0.5*p) + 0.05);
 
-	return 128.0 * max(n0 - d_falloff, 0.0);
+	return 128.0 * max((t+0.1)*n0-0.1, 0.0);
 }

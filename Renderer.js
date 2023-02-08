@@ -95,8 +95,8 @@ export default class Renderer {
 		this._blackHoleShader.uniforms.cameraPosition = camera.position;
 		this._blackHoleShader.uniforms.blackHoleMass = blackHole.mass;
 		this._blackHoleShader.uniforms.innerAccretionDiskRadius = blackHole.photonSphereRadius;
-		this._blackHoleShader.uniforms.outerAccretionDiskRadius = 2.25*blackHole.photonSphereRadius;
-		this._blackHoleShader.uniforms.accretionDiskHeight = 0.1*blackHole.photonSphereRadius;
+		this._blackHoleShader.uniforms.outerAccretionDiskRadius = 3*blackHole.photonSphereRadius;
+		this._blackHoleShader.uniforms.accretionDiskHeight = 0.2*blackHole.photonSphereRadius;
 		this._blackHoleShader.uniforms.steps = this._steps;
 		this._blackHoleShader.uniforms.stepSize = this._stepSize;
 		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
