@@ -23,6 +23,9 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 		optionsMenu.hidden = false;
 	});
 	optionsMenu.mass = 0.25;
+	optionsMenu.accretionDiskEnabled = true;
+	optionsMenu.accretionDiskWidth = 1;
+	optionsMenu.accretionDiskHeight = 1;
 	optionsMenu.steps = 250;
 	optionsMenu.stepSize = 1;
 
@@ -30,6 +33,15 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 	const blackHole = new KerrNewmanBlackHole(new Vector3f(2,0,15));
 	optionsMenu.onMassChange(mass=>{
 		blackHole.mass = mass;
+	});
+	optionsMenu.onAccretionDiskStatusChange(enabled=>{
+		renderer.accretionDiskEnabled = enabled;
+	});
+	optionsMenu.onAccretionDiskWidthChange(width=>{
+		renderer.accretionDiskWidth = width;
+	});
+	optionsMenu.onAccretionDiskHeightChange(height=>{
+		renderer.accretionDiskHeight = height;
 	});
 	optionsMenu.onStepsChange(steps=>{
 		renderer.steps = steps;

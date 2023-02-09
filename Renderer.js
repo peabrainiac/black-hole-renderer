@@ -52,6 +52,9 @@ export default class Renderer {
 		this._blackHoleShader = new BlackHoleShader(this._gl);
 		this._steps = 100;
 		this._stepSize = 1;
+		this._accretionDiskEnabled = true;
+		this._accretionDiskWidth = 1;
+		this._accretionDiskHeight = 1;
 	}
 
 	/**
@@ -95,8 +98,8 @@ export default class Renderer {
 		this._blackHoleShader.uniforms.cameraPosition = camera.position;
 		this._blackHoleShader.uniforms.blackHoleMass = blackHole.mass;
 		this._blackHoleShader.uniforms.innerAccretionDiskRadius = blackHole.photonSphereRadius;
-		this._blackHoleShader.uniforms.outerAccretionDiskRadius = 3*blackHole.photonSphereRadius;
-		this._blackHoleShader.uniforms.accretionDiskHeight = 0.2*blackHole.photonSphereRadius;
+		this._blackHoleShader.uniforms.outerAccretionDiskRadius = (1+2*(this._accretionDiskEnabled?this._accretionDiskWidth:0))*blackHole.photonSphereRadius;
+		this._blackHoleShader.uniforms.accretionDiskHeight = 0.2*(this._accretionDiskEnabled?this._accretionDiskHeight:0)*blackHole.photonSphereRadius;
 		this._blackHoleShader.uniforms.steps = this._steps;
 		this._blackHoleShader.uniforms.stepSize = this._stepSize;
 		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
@@ -139,5 +142,29 @@ export default class Renderer {
 
 	set stepSize(stepSize){
 		this._stepSize = stepSize;
+	}
+
+	get accretionDiskEnabled(){
+		return this._accretionDiskEnabled;
+	}
+
+	set accretionDiskEnabled(accretionDiskEnabled){
+		this._accretionDiskEnabled = accretionDiskEnabled;
+	}
+
+	get accretionDiskWidth(){
+		return this._accretionDiskWidth;
+	}
+
+	set accretionDiskWidth(accretionDiskWidth){
+		this._accretionDiskWidth= accretionDiskWidth;
+	}
+
+	get accretionDiskHeight(){
+		return this._accretionDiskHeight;
+	}
+
+	set accretionDiskHeight(accretionDiskHeight){
+		this._accretionDiskHeight= accretionDiskHeight;
 	}
 }
