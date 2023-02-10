@@ -83,7 +83,7 @@ export default class Renderer {
 
 		this._shader.use();
 		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
-		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.25)/*.rotateExp(0,0.1*t,0.2*t)*/,new Vector3f(-1,0,0));
+		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.25)/*.rotateExp(0,0.1*t,0.2*t)*/,new Vector3f(-0.5,0,12.5));
 		this._shader.uniforms.cameraPosition = camera.position;
 		this._starBox.cubeMap.bind();
 		this._teapot.render();
@@ -105,7 +105,7 @@ export default class Renderer {
 		this._blackHoleShader.uniforms.steps = this._steps;
 		this._blackHoleShader.uniforms.stepSize = this._stepSize;
 		this._blackHoleShader.uniforms.simulationRadius = this._blackHoleSimulationRadius;
-		
+
 		this._gl.activeTexture(this._gl.TEXTURE0);
 		this._gl.bindTexture(this._gl.TEXTURE_2D,this._colors.id);
 		this._gl.activeTexture(this._gl.TEXTURE1);

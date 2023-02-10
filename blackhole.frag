@@ -22,6 +22,7 @@ uniform samplerCube starMap;
 
 uniform mediump sampler3D noiseTexture;
 
+void stepRay(inout vec4 x, inout vec4 p, inout vec4 prevX, inout vec4 prevP, inout vec4 color, in int i);
 mat4 metric(vec4 x);
 mat4 metricInverse(vec4 x);
 vec4 hamiltonianGradient(vec4 x, vec4 p);
@@ -34,22 +35,75 @@ void main(void){
 	vec4 pixelColor = texelFetch(imageColors,ivec2(gl_FragCoord.xy),0);
 	vec4 pixelRayData = texelFetch(imageRayData,ivec2(gl_FragCoord.xy),0);
 
-	vec3 rayDirection = pixelRayData.w==0.0?normalize(pass_direction):normalize(pixelRayData.xyz);
-	vec3 rayPosition = cameraPosition+rayDirection*pixelRayData.w;
-	vec3 relativeCenterPosition = centerPosition-rayPosition;
-	float rayCenterDistance = length(cross(rayDirection,relativeCenterPosition));
-	if(rayCenterDistance>=simulationRadius||(length(relativeCenterPosition)>=simulationRadius&&dot(rayDirection,relativeCenterPosition)<=0.0)){
-		out_color = texture(starMap,rayDirection);
+	// initalizes everything for the ray traced directly from the camera
+	vec4 color = vec4(0);
+	vec3 rayDirection = normalize(pass_direction);
+	vec3 rayPosition = cameraPosition;
+	vec3 relativeRayPosition = rayPosition-centerPosition;
+	float rayCenterDistance = length(cross(rayDirection,relativeRayPosition));
+	// if there's an object at the current pixel, traces the ray up to that object, then reinitializes everything for the reflection
+	if (pixelRayData.w!=0.0){
+		if(!(rayCenterDistance>=simulationRadius||(length(relativeRayPosition)>=simulationRadius&&dot(rayDirection,-relativeRayPosition)<=0.0))){
+			// distance to & position of the nearest intersection of the ray with the simulation sphere around the black hole
+			float intersectionDistance = max(0.0,dot(rayDirection,-relativeRayPosition)-sqrt(simulationRadius*simulationRadius-rayCenterDistance*rayCenterDistance));
+			vec3 intersectionPosition = relativeRayPosition+intersectionDistance*rayDirection;
+
+			vec4 x = vec4(0,intersectionPosition);
+			vec4 p = metric(x)*vec4(-1,rayDirection);
+			p = 2.0*normalize(renullMomentum(metricInverse(x),p));
+			
+			float minSpatialVelocity = 0.75;
+			float distanceTravelled = intersectionDistance;
+
+			int i;
+			vec4 prevX = x;
+			vec4 prevP = p;
+			for (i=0;i<steps;i++){
+				vec4 prevPrevX = prevX;
+				vec4 prevPrevP = prevP;
+				vec4 prevColor = color;
+				stepRay(x,p,prevX,prevP,color,i);
+				distanceTravelled += length(x.yzw-prevX.yzw);
+
+				if (length((metricInverse(x)*p).yzw)<minSpatialVelocity){
+					color.rgb *= color.a;
+					color.a = 1.0;
+					break;
+				}else if(distanceTravelled>=pixelRayData.w){
+					float t = 1.0-(distanceTravelled-pixelRayData.w)/length(x.yzw-prevX.yzw);
+					float nextTimeStep = 0.1*dot(x.yzw,x.yzw);
+					vec4 nextP = p-nextTimeStep*analyticalHamiltonianGradient(x,p);
+					vec4 nextX = x+nextTimeStep*metricInverse(x)*p;
+					nextP = 2.0*normalize(renullMomentum(metricInverse(nextX),nextP));
+					x = catmullRomInterpolate(prevPrevX,prevX,x,nextX,t);
+					p = catmullRomInterpolate(prevPrevP,prevP,p,nextP,t);
+					color = mix(prevColor,color,t);
+					break;
+				}else if(length(x.yzw)>simulationRadius){
+					break;
+				}else if (color.a>0.995){
+					color /= color.a;
+					break;
+				}
+			}
+		}
+		// todo: initialize reflected ray position where the previous ray ended, not based on this simple heuristic
+		color = mix(pixelColor,vec4(color.rgb,1.0),color.a);
+		rayDirection = normalize(pixelRayData.xyz);
+		rayPosition = cameraPosition+rayDirection*pixelRayData.w;
+		relativeRayPosition = rayPosition-centerPosition;
+		rayCenterDistance = length(cross(rayDirection,relativeRayPosition));
+	}
+	if(rayCenterDistance>=simulationRadius||(length(relativeRayPosition)>=simulationRadius&&dot(rayDirection,-relativeRayPosition)<=0.0)){
+		out_color = mix(texture(starMap,rayDirection),vec4(color.rgb,1.0),color.a);
 	}else{
 		// distance to & position of the nearest intersection of the ray with the simulation sphere around the black hole
-		float intersectionDistance = max(0.0,dot(rayDirection,relativeCenterPosition)-sqrt(simulationRadius*simulationRadius-rayCenterDistance*rayCenterDistance));
-		vec3 intersectionPosition = rayPosition+intersectionDistance*rayDirection;
+		float intersectionDistance = max(0.0,dot(rayDirection,-relativeRayPosition)-sqrt(simulationRadius*simulationRadius-rayCenterDistance*rayCenterDistance));
+		vec3 intersectionPosition = relativeRayPosition+intersectionDistance*rayDirection;
 
-		vec4 x = vec4(0,intersectionPosition-centerPosition);
+		vec4 x = vec4(0,intersectionPosition);
 		vec4 p = metric(x)*vec4(-1,rayDirection);
 		p = 2.0*normalize(renullMomentum(metricInverse(x),p));
-
-		vec4 integratedVolumeColor = vec4(0.0);
 
 		float minSpatialVelocity = 0.75;
 
@@ -57,14 +111,10 @@ void main(void){
 		vec4 prevX = x;
 		vec4 prevP = p;
 		for (i=0;i<steps;i++){
-			float timeStep = stepSize*(0.0125/blackHoleMass)*dot(x.yzw,x.yzw);
 			vec4 prevPrevX = prevX;
 			vec4 prevPrevP = prevP;
-			prevX = x;
-			prevP = p;
-			p -= timeStep*analyticalHamiltonianGradient(x,p);
-			x += timeStep*metricInverse(x)*prevP;
-			p = 2.0*normalize(renullMomentum(metricInverse(x),p));
+			stepRay(x,p,prevX,prevP,color,i);
+
 			if (length((metricInverse(x)*p).yzw)<minSpatialVelocity){
 				break;
 			}else if(length(x.yzw)>simulationRadius){
@@ -72,7 +122,6 @@ void main(void){
 				vec3 lastStepDirection = normalize(lastStep);
 				// proportion of the last step that was still inside the simulation bubble
 				float t = (dot(lastStepDirection,-prevX.yzw)+sqrt(simulationRadius*simulationRadius-dot(cross(lastStepDirection,-prevX.yzw),cross(lastStepDirection,-prevX.yzw))))/length(lastStep);
-				//float t = 1.0-(length(x.yzw)-simulationRadius)/(length(x.yzw)-length(prevX.yzw));
 				if (i==0){
 					t = t*t*(2.0-t);
 				}
@@ -86,32 +135,15 @@ void main(void){
 				p = catmullRomInterpolate(prevPrevP,prevP,p,nextP,t);
 				break;
 			}
-			// if within the bounding box (or rather, bounding hollow cylinder) of the accretion disk, samples its density at several substeps along the previous step.
-			// the number of substeps is computed dynamically and depends on both the spatial length of the previous step and the number of steps so far.
-			float lastStepLength = length(x.yzw-prevX.yzw);
-			if ((x.yzw.y*prevX.yzw.y<0.0||min(abs(x.yzw.y),abs(prevX.yzw.y))<accretionDiskHeight)&&max(dot(x.yzw.xz,x.yzw.xz),dot(prevX.yzw.xz,prevX.yzw.xz))>innerAccretionDiskRadius*innerAccretionDiskRadius){
-				int subSteps = int(clamp(max(32.0,64.0-8.0*float(i))*lastStepLength,4.0,32.0));
-				float subStepWheight = 1.0/float(subSteps);
-				for (int j=0;j<subSteps;j++){
-					float t = subStepWheight*float(j);
-					vec3 pos = mix(prevX,x,t).yzw;
-					if (length(pos.xz)>innerAccretionDiskRadius&&pos.y*pos.y<accretionDiskHeight){
-						vec3 volumeColor;
-						vec3 volumeEmittance;
-						float density = sampleVolume(pos,volumeColor,volumeEmittance);
-						integratedVolumeColor += subStepWheight*0.15*lastStepLength*(1.0-integratedVolumeColor.a)*(vec4(volumeEmittance,0)+density*vec4(volumeColor,1));
-					}
-				}
-				if (integratedVolumeColor.a>0.995){
-					integratedVolumeColor /= integratedVolumeColor.a;
-					break;
-				}
+			if (color.a>0.995){
+				color /= color.a;
+				break;
 			}
 		}
 
 		rayDirection = (metricInverse(x)*p).yzw;
 		vec4 temp = length((metricInverse(x)*p).yzw)<minSpatialVelocity||i==steps?vec4(0,0,0,1):texture(starMap,rayDirection);
-		out_color = mix(temp,integratedVolumeColor,integratedVolumeColor.a);
+		out_color = mix(temp,vec4(color.rgb,1.0),color.a);
 		// several debug overlays, currently unused
 		//out_color.xyz += vec3(float(i)/float(steps));
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-length(rayDirection))),0.5);
@@ -121,8 +153,33 @@ void main(void){
 		//out_color.xyz = mix(out_color.xyz,max(vec3(0.0),vec3(-1,1,0)*(1.0-p.x/temp)),0.5);
 	}
 	//out_color.xyz = mix(out_color.xyz,vec3(0.0625),0.5);
+}
 
-	out_color = vec4(mix(out_color.rgb,pixelColor.rgb,pixelColor.a),1);
+// does one step along the ray in the given direction, and if within the accretion disk, updates the color correspondingly
+void stepRay(inout vec4 x, inout vec4 p, inout vec4 prevX, inout vec4 prevP, inout vec4 color, in int i){
+	float timeStep = stepSize*(0.0125/blackHoleMass)*dot(x.yzw,x.yzw);
+	prevX = x;
+	prevP = p;
+	p -= timeStep*analyticalHamiltonianGradient(x,p);
+	x += timeStep*metricInverse(x)*prevP;
+	p = 2.0*normalize(renullMomentum(metricInverse(x),p));
+	// if within the bounding box (or rather, bounding hollow cylinder) of the accretion disk, samples its density at several substeps along the previous step.
+	// the number of substeps is computed dynamically and depends on both the spatial length of the previous step and the number of steps so far.
+	float lastStepLength = length(x.yzw-prevX.yzw);
+	if ((x.yzw.y*prevX.yzw.y<0.0||min(abs(x.yzw.y),abs(prevX.yzw.y))<accretionDiskHeight)&&max(dot(x.yzw.xz,x.yzw.xz),dot(prevX.yzw.xz,prevX.yzw.xz))>innerAccretionDiskRadius*innerAccretionDiskRadius){
+		int subSteps = int(clamp(max(32.0,64.0-8.0*float(i))*lastStepLength,4.0,32.0));
+		float subStepWheight = 1.0/float(subSteps);
+		for (int j=0;j<subSteps;j++){
+			float t = subStepWheight*float(j);
+			vec3 pos = mix(prevX,x,t).yzw;
+			if (length(pos.xz)>innerAccretionDiskRadius&&pos.y*pos.y<accretionDiskHeight){
+				vec3 volumeColor;
+				vec3 volumeEmittance;
+				float density = sampleVolume(pos,volumeColor,volumeEmittance);
+				color += subStepWheight*0.15*lastStepLength*(1.0-color.a)*(vec4(volumeEmittance,0)+density*vec4(volumeColor,1));
+			}
+		}
+	}
 }
 
 // Kerr-Newman metric in Kerr-Schild coordinates, taken from https://michaelmoroz.github.io/TracingGeodesics/
