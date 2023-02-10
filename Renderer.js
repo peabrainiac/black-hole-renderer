@@ -8,7 +8,7 @@ import Vector3f from "./gl/Vector3f.js";
 import BlackHoleShader from "./BlackHoleShader.js";
 import {KerrNewmanBlackHole} from "./BlackHoleNumerics.js";
 import Framebuffer from "./gl/FrameBuffer.js";
-import Texture from "./gl/Texture.js";
+import Texture, {Texture3D} from "./gl/Texture.js";
 
 const teatopModelFile = await (await fetch("./res/teapot.obj")).text()
 
@@ -44,6 +44,8 @@ export default class Renderer {
 		this._framebuffer.attachTexture(this._rayData,this._gl.COLOR_ATTACHMENT1);
 		this._framebuffer.attachDepthBuffer();
 
+		this._noiseTexture = Texture3D.getRandom(this._gl,64,64,64);
+		this._gl.texParameterf(this._gl.TEXTURE_3D,this._gl.TEXTURE_MAG_FILTER,this._gl.LINEAR);
 		this._cube = Vao.createCube(this._gl);
 		this._starBox = new StarBox(this._gl);
 		this._teapot = Vao.fromObjFile(this._gl,teatopModelFile);
@@ -110,6 +112,8 @@ export default class Renderer {
 		this._gl.bindTexture(this._gl.TEXTURE_2D,this._rayData.id);
 		this._gl.activeTexture(this._gl.TEXTURE2);
 		this._starBox.cubeMap.bind()
+		this._gl.activeTexture(this._gl.TEXTURE3);
+		this._gl.bindTexture(this._gl.TEXTURE_3D,this._noiseTexture.id)
 		this._cube.render();
 	}
 

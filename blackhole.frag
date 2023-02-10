@@ -20,6 +20,8 @@ uniform sampler2D imageRayData;
 
 uniform samplerCube starMap;
 
+uniform mediump sampler3D noiseTexture;
+
 mat4 metric(vec4 x);
 mat4 metricInverse(vec4 x);
 vec4 hamiltonianGradient(vec4 x, vec4 p);
@@ -101,6 +103,7 @@ void main(void){
 					}
 				}
 				if (integratedVolumeColor.a>0.995){
+					integratedVolumeColor /= integratedVolumeColor.a;
 					break;
 				}
 			}
@@ -218,70 +221,14 @@ vec4 catmullRomInterpolate(vec4 x0, vec4 x1, vec4 x2, vec4 x3, float t){
  * based on https://www.shadertoy.com/view/flcXW4  *
  * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// https://www.shadertoy.com/view/4djSRW
-vec4 hash44(vec4 p4){
-	p4  = fract( p4 * vec4(0.1031, 0.1030, 0.0973, 0.1099) );
-	p4 += dot(p4, p4.wzxy + 33.33);
-	return fract( (p4.xxyz + p4.yzzw) * p4.zywx);
-}
-
 float noise(vec3 p, int octave){
-	#ifdef USE_GRADIENT_NOISE
-	// Inigo Quilez Gradient Noise
-	// https://www.shadertoy.com/view/Xsl3Dl
-
 	vec3 f = fract(p);
 	vec3 i = floor(p);
-
-	vec3 s = smoothstep(0.0, 1.0, f);
-
-	vec3 h0 = hash44( vec4(i + vec3(0, 0, 0), octave) ).xyz;
-	vec3 h1 = hash44( vec4(i + vec3(1, 0, 0), octave) ).xyz;
-	vec3 h2 = hash44( vec4(i + vec3(0, 1, 0), octave) ).xyz;
-	vec3 h3 = hash44( vec4(i + vec3(1, 1, 0), octave) ).xyz;
-	vec3 h4 = hash44( vec4(i + vec3(0, 0, 1), octave) ).xyz;
-	vec3 h5 = hash44( vec4(i + vec3(1, 0, 1), octave) ).xyz;
-	vec3 h6 = hash44( vec4(i + vec3(0, 1, 1), octave) ).xyz;
-	vec3 h7 = hash44( vec4(i + vec3(1, 1, 1), octave) ).xyz;
-
-	float v0 = dot( h0, f - vec3(0, 0, 0) );
-	float v1 = dot( h1, f - vec3(1, 0, 0) );
-	float v2 = dot( h2, f - vec3(0, 1, 0) );
-	float v3 = dot( h3, f - vec3(1, 1, 0) );
-	float v4 = dot( h4, f - vec3(0, 0, 1) );
-	float v5 = dot( h5, f - vec3(1, 0, 1) );
-	float v6 = dot( h6, f - vec3(0, 1, 1) );
-	float v7 = dot( h7, f - vec3(1, 1, 1) );
-
-	return smoothstep(-0.5, 0.5, mix(
-	mix(mix(v0, v1, s.x), mix(v2, v3, s.x), s.y),
-	mix(mix(v4, v5, s.x), mix(v6, v7, s.x), f.y),
-	s.z)
-	);
-	#else
-	
-	vec3 f = fract(p);
-	vec3 i = floor(p);
-
-	vec3 s = smoothstep(0.0, 1.0, f);
-
-	float t0 = hash44( vec4(i + vec3(0, 0, 0), octave) ).x;
-	float t1 = hash44( vec4(i + vec3(1, 0, 0), octave) ).x;
-	float t2 = hash44( vec4(i + vec3(0, 1, 0), octave) ).x;
-	float t3 = hash44( vec4(i + vec3(1, 1, 0), octave) ).x;
-	float t4 = hash44( vec4(i + vec3(0, 0, 1), octave) ).x;
-	float t5 = hash44( vec4(i + vec3(1, 0, 1), octave) ).x;
-	float t6 = hash44( vec4(i + vec3(0, 1, 1), octave) ).x;
-	float t7 = hash44( vec4(i + vec3(1, 1, 1), octave) ).x;
-
-	return mix(
-	mix(mix(t0, t1, s.x), mix(t2, t3, s.x), s.y),
-	mix(mix(t4, t5, s.x), mix(t6, t7, s.x), f.y),
-	s.z);
-	#endif
+	vec3 s = smoothstep(0.0,1.0,f);
+	return texture(noiseTexture,(i+s+0.5)/64.0).x;
 }
 
-// also taken from https://www.shadertoy.com/view/flcXW4, where it is cited with the following comment:
+// taken from https://www.shadertoy.com/view/flcXW4, where it is cited with the following comment:
 // > idk what to cite, here are some shaders that all use this
 // > https://www.shadertoy.com/view/tsKczy
 // > https://www.shadertoy.com/view/MslSDl
@@ -309,18 +256,14 @@ vec2 rotate(vec2 vector, float theta) {
 // Fractal Brownian Motion
 float fbm(vec3 p, int iter){
 	float value = 0.0;
-	float accum = 0.0;
 	float atten = 0.5;
 	float scale = 1.0;
-
 	for(int i = 0; i < iter; i++){
-		value += atten * noise(scale * p, iter);
-		accum += atten;
+		value += atten * noise(scale*p,iter);
 		atten *= 0.5;
 		scale *= 2.5;
 	}
-
-	return accum != 0.0 ? value / accum : value;
+	return value/(1.0-atten);
 }
 
 // taken from https://www.shadertoy.com/view/flcXW4

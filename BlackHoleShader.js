@@ -12,6 +12,6 @@ export default class BlackHoleShader extends ShaderProgram {
 	 * @param {WebGL2RenderingContext} gl
 	 */
 	constructor(gl){
-		super(gl,vertexSource,fragmentSource,{attribs:["position"],textures:["imageColors","imageRayData","starMap"]});
+		super(gl,vertexSource,fragmentSource,{attribs:["position"],textures:["imageColors","imageRayData","starMap","noiseTexture"]});
 	}
 }
