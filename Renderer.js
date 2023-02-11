@@ -1,4 +1,4 @@
-import Vao from "./gl/VAO.js";
+import Vao from "./gl/Vao.js";
 import MainShader from "./MainShader.js";
 import Matrix4f from "./gl/Matrix4f.js";
 import StarBox from "./StarBox.js";
@@ -7,7 +7,7 @@ import Camera from "./Camera.js";
 import Vector3f from "./gl/Vector3f.js";
 import BlackHoleShader from "./BlackHoleShader.js";
 import {KerrNewmanBlackHole} from "./BlackHoleNumerics.js";
-import Framebuffer from "./gl/FrameBuffer.js";
+import Framebuffer from "./gl/Framebuffer.js";
 import Texture, {Texture3D} from "./gl/Texture.js";
 
 const teatopModelFile = await (await fetch("./res/teapot.obj")).text()

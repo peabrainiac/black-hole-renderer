@@ -1,5 +1,5 @@
 import CubeMap from "./gl/CubeMap.js";
-import VAO from "./gl/VAO.js";
+import VAO from "./gl/Vao.js";
 import Matrix4f from "./gl/Matrix4f.js";
 import ShaderProgram from "./gl/ShaderProgram.js";
 

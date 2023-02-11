@@ -1,6 +1,6 @@
 import Matrix3f from "./Matrix3f.js";
 import ShaderProgram from "./ShaderProgram.js";
-import Vao from "./VAO.js";
+import Vao from "./Vao.js";
 
 /**
  * Simple wrapper class for cube maps.
@@ -53,7 +53,7 @@ export default class CubeMap {
 			gl.texImage2D(face,0,gl.RGBA,resolution,resolution,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
 		}
 
-		/** @type {ShaderProgram<{rotation:Matrix3f}>} */
+		/** @type {ShaderProgram<{rotation:Matrix3f},{}>} */
 		let shader = new ShaderProgram(gl,/*glsl*/`
 			#version 300 es
 			precision highp float;
