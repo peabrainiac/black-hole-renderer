@@ -10,6 +10,7 @@ import Vector3f from "./Vector3f.js";
  * to the gpu when they are assigned to `.uniforms`, not when their properties change. Their TypeScript type is also only given as
  * a template type `T`, and can't be auto-detected from the shader source code.
  * @template T
+ * @template F
  */
 export default class ShaderProgram {
 	/**
@@ -17,7 +18,7 @@ export default class ShaderProgram {
 	 * @param {WebGL2RenderingContext} gl
 	 * @param {string} vertexSource
 	 * @param {string} fragmentSource
-	 * @param {{attribs?:string[],textures?:string[]}} [options]
+	 * @param {{attribs?:string[],textures?:string[],flags?:F}} [options]
 	 */
 	constructor(gl,vertexSource,fragmentSource,options){
 		this._gl = gl;
@@ -41,19 +42,24 @@ export default class ShaderProgram {
 			}
 			return true;
 		}});
+		/** @type {F} */
+		// @ts-ignore
+		this.flags = new Proxy(options.flags||{},{set:(target,property,value,receiver)=>{
+			// @ts-ignore
+			if (target[property]!=value){
+				// @ts-ignore
+				target[property] = value;
+				if (this._isReady){
+					this.compile(this._vertexSource,this._fragmentSource);
+				}
+			}
+			return true;
+		}});
+		this._attribs = options.attribs;
+		this._textures = options.textures;
 		this._isReady = false;
 		if (vertexSource&&fragmentSource){
 			this.compile(vertexSource,fragmentSource);
-			if (options&&options.attribs){
-				for (let i=0;i<options.attribs.length;i++){
-					this.bindAttribLocation(i,options.attribs[i]);
-				}
-			}
-			if (options&&options.textures){
-				for (let i=0;i<options.textures.length;i++){
-					this.bindTextureLocation(i,options.textures[i]);
-				}
-			}
 		}
 	}
 
@@ -62,9 +68,10 @@ export default class ShaderProgram {
 	 * @param {WebGL2RenderingContext} gl
 	 * @param {string} vertexPathOrSource
 	 * @param {string} fragmentPathOrSource
-	 * @param {*} options
+	 * @param {{attribs?:string[],textures?:string[]}} options
 	 * @template T
-	 * @returns {Promise<ShaderProgram<T>>}
+	 * @template F
+	 * @returns {Promise<ShaderProgram<T,F>>}
 	 */
 	static async fetch(gl,vertexPathOrSource,fragmentPathOrSource,options){
 		let vertexSource = /^.*$/.test(vertexPathOrSource)?(await (await fetch(vertexPathOrSource)).text()):vertexPathOrSource;
@@ -79,9 +86,12 @@ export default class ShaderProgram {
 	compile(vertexSource,fragmentSource){
 		this._vertexSource = vertexSource;
 		this._fragmentSource = fragmentSource;
-		console.log("Compiling!");
-		this._vertexShader.compile(vertexSource);
-		this._fragmentShader.compile(fragmentSource);
+		// @ts-ignore
+		let flags = Object.getOwnPropertyNames(this.flags).filter((flag)=>(this.flags[flag]));
+		console.log((this._isReady?"Rec":"C")+"ompiling shader! Active flags:",flags);
+		let flagString = (flags.length?"\n#define "+flags.join("\n#define "):"")+"\n";
+		this._vertexShader.compile(vertexSource.replace("\n",flagString));
+		this._fragmentShader.compile(fragmentSource.replace("\n",flagString));
 		this._gl.linkProgram(this._id);
 		if (!this._gl.getProgramParameter(this._id,this._gl.LINK_STATUS)){
 			this._isReady = false;
@@ -111,6 +121,16 @@ export default class ShaderProgram {
 		for (let i=0;i<uniforms.length;i++){
 			// @ts-ignore
 			this.load(uniforms[i],this.uniforms[uniforms[i]]);
+		}
+		if (this._attribs){
+			for (let i=0;i<this._attribs.length;i++){
+				this.bindAttribLocation(i,this._attribs[i]);
+			}
+		}
+		if (this._textures){
+			for (let i=0;i<this._textures.length;i++){
+				this.bindTextureLocation(i,this._textures[i]);
+			}
 		}
 	}
 
@@ -161,7 +181,7 @@ export default class ShaderProgram {
 		}else if(type==this._gl.FLOAT_MAT4&&value instanceof Matrix4f){
 			this.loadMatrix4f(name,value);
 		}else{
-			console.warn("Error loading uniform! Name:",name,", type:",type,", value:",value);
+			//console.warn("Error loading uniform! Name:",name,", type:",type,", value:",value);
 		}
 	}
 

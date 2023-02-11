@@ -51,12 +51,14 @@ export default class Renderer {
 		this._teapot = Vao.fromObjFile(this._gl,teatopModelFile);
 		this._shader = new MainShader(this._gl);
 		this._blackHoleSimulationRadius = 10;
-		this._blackHoleShader = new BlackHoleShader(this._gl);
+		this._blackHoleShader = new BlackHoleShader(this._gl,{ACCRETION_DISK_ENABLED:true,TEAPOT_ENABLED:false});
 		this._steps = 100;
 		this._stepSize = 1;
 		this._accretionDiskEnabled = true;
 		this._accretionDiskWidth = 1;
 		this._accretionDiskHeight = 1;
+		/** @type {"near"|"far"|"hidden"} */
+		this._teapotPosition = "hidden";
 	}
 
 	/**
@@ -81,12 +83,14 @@ export default class Renderer {
 
 		this._gl.enable(this._gl.DEPTH_TEST);
 
-		this._shader.use();
-		this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
-		this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.25)/*.rotateExp(0,0.1*t,0.2*t)*/,new Vector3f(-0.5,0,12.5));
-		this._shader.uniforms.cameraPosition = camera.position;
-		this._starBox.cubeMap.bind();
-		this._teapot.render();
+		if (this._teapotPosition!="hidden"){
+			this._shader.use();
+			this._shader.uniforms.viewProjection = this._projectionMatrix.copy().mul(viewMatrix);
+			this._shader.uniforms.modelTransform = Matrix4f.transformationMatrix(new Matrix3f(0.25),this._teapotPosition=="near"?new Vector3f(-0.5,0,12.5):new Vector3f(-1,0,0));
+			this._shader.uniforms.cameraPosition = camera.position;
+			this._starBox.cubeMap.bind();
+			this._teapot.render();
+		}
 
 		this._gl.disable(this._gl.DEPTH_TEST);
 
@@ -153,7 +157,10 @@ export default class Renderer {
 	}
 
 	set accretionDiskEnabled(accretionDiskEnabled){
-		this._accretionDiskEnabled = accretionDiskEnabled;
+		if (this._accretionDiskEnabled!=accretionDiskEnabled){
+			this._accretionDiskEnabled = accretionDiskEnabled;
+			this._blackHoleShader.flags.ACCRETION_DISK_ENABLED = accretionDiskEnabled;
+		}
 	}
 
 	get accretionDiskWidth(){
@@ -170,5 +177,16 @@ export default class Renderer {
 
 	set accretionDiskHeight(accretionDiskHeight){
 		this._accretionDiskHeight= accretionDiskHeight;
+	}
+
+	get teapotPosition(){
+		return this._teapotPosition;
+	}
+
+	set teapotPosition(teapotPosition){
+		if (this._teapotPosition!=teapotPosition){
+			this._teapotPosition = teapotPosition;
+			this._blackHoleShader.flags.TEAPOT_ENABLED = teapotPosition!="hidden";
+		}
 	}
 }

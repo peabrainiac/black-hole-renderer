@@ -42,6 +42,7 @@ void main(void){
 	vec3 relativeRayPosition = rayPosition-centerPosition;
 	float rayCenterDistance = length(cross(rayDirection,relativeRayPosition));
 	// if there's an object at the current pixel, traces the ray up to that object, then reinitializes everything for the reflection
+	#ifdef TEAPOT_ENABLED
 	if (pixelRayData.w!=0.0){
 		if(!(rayCenterDistance>=simulationRadius||(length(relativeRayPosition)>=simulationRadius&&dot(rayDirection,-relativeRayPosition)<=0.0))){
 			// distance to & position of the nearest intersection of the ray with the simulation sphere around the black hole
@@ -94,6 +95,7 @@ void main(void){
 		relativeRayPosition = rayPosition-centerPosition;
 		rayCenterDistance = length(cross(rayDirection,relativeRayPosition));
 	}
+	#endif
 	if(rayCenterDistance>=simulationRadius||(length(relativeRayPosition)>=simulationRadius&&dot(rayDirection,-relativeRayPosition)<=0.0)){
 		out_color = mix(texture(starMap,rayDirection),vec4(color.rgb,1.0),color.a);
 	}else{
@@ -165,6 +167,7 @@ void stepRay(inout vec4 x, inout vec4 p, inout vec4 prevX, inout vec4 prevP, ino
 	p = 2.0*normalize(renullMomentum(metricInverse(x),p));
 	// if within the bounding box (or rather, bounding hollow cylinder) of the accretion disk, samples its density at several substeps along the previous step.
 	// the number of substeps is computed dynamically and depends on both the spatial length of the previous step and the number of steps so far.
+	#ifdef ACCRETION_DISK_ENABLED
 	float lastStepLength = length(x.yzw-prevX.yzw);
 	if ((x.yzw.y*prevX.yzw.y<0.0||min(abs(x.yzw.y),abs(prevX.yzw.y))<accretionDiskHeight)&&max(dot(x.yzw.xz,x.yzw.xz),dot(prevX.yzw.xz,prevX.yzw.xz))>innerAccretionDiskRadius*innerAccretionDiskRadius){
 		int subSteps = int(clamp(max(32.0,64.0-8.0*float(i))*lastStepLength,4.0,32.0));
@@ -180,6 +183,7 @@ void stepRay(inout vec4 x, inout vec4 p, inout vec4 prevX, inout vec4 prevP, ino
 			}
 		}
 	}
+	#endif
 }
 
 // Kerr-Newman metric in Kerr-Schild coordinates, taken from https://michaelmoroz.github.io/TracingGeodesics/

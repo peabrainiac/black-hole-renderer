@@ -36,6 +36,13 @@ export default class OptionsMenu extends HTMLElement {
 			<h2>simulation params:</h2>
 			steps: <input type="range" id="steps-input" min="10" max="500" step="1">:<span id="steps-span"></span><br>
 			step size: <input type="range" id="step-size-input" min="0.15" max="1.75" step="0.01">:<span id="step-size-span"></span>
+			<hr>
+			<h2 title="the rendering process for vertex models currently doesn't take spacetime curvature into account, so the teapot appears in the wrong position. reflections and interations with the accretion disk are somewhat functioning though.">teapot (WIP, still kinda broken):</h2>
+			position: <select id="teapot-position-select">
+				<option value="near">near</option>
+				<option value="far">far</option>
+				<option value="hidden" selected>hidden</option>
+			</select>
 		`;
 
 		/** @type {HTMLInputElement} */
@@ -112,6 +119,16 @@ export default class OptionsMenu extends HTMLElement {
 		this._stepSizeInput.addEventListener("input",e=>{
 			this._stepSizeSpan.textContent = Math.round(100*parseFloat(this._stepSizeInput.value))+"%";
 			this._stepSizeChangeCallbacks.forEach(callback=>callback(parseFloat(this._stepSizeInput.value)));
+		});
+
+		/** @type {HTMLSelectElement} */
+		// @ts-ignore
+		this._teapotPositionSelect = this.shadowRoot.getElementById("teapot-position-select");
+		/** @type {((teapotPosition:"near"|"far"|"hidden")=>void)[]} */
+		this._teapotPositionChangeCallbacks = [];
+		this._teapotPositionSelect.addEventListener("input",e=>{
+			// @ts-ignore
+			this._teapotPositionChangeCallbacks.forEach(callback=>callback(this._teapotPositionSelect.value));
 		});
 	}
 
@@ -235,6 +252,26 @@ export default class OptionsMenu extends HTMLElement {
 	set currentDistance(currentDistance){
 		this._currentDistance = currentDistance;
 		this._currentDistanceSpan.textContent = currentDistance.toPrecision(3);
+	}
+
+	/** @return {"near"|"far"|"hidden"} */
+	get teapotPosition(){
+		// @ts-ignore
+		return this._teapotPositionSelect.value;
+	}
+
+	set teapotPosition(teapotPosition){
+		this._teapotPositionSelect.value = teapotPosition;
+		this._teapotPositionChangeCallbacks.forEach(callback=>callback(teapotPosition));
+	}
+
+	/**
+	 * Calls the given function whenever the teapot position setting changes, and once immediately.
+	 * @param {(teapotPosition:"near"|"far"|"hidden")=>void} callback
+	 */
+	onTeapotPositionChange(callback){
+		this._teapotPositionChangeCallbacks.push(callback);
+		callback(this.teapotPosition);
 	}
 }
 customElements.define("options-menu",OptionsMenu);

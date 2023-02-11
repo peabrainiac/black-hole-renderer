@@ -8,7 +8,7 @@ const [vertexSource,fragmentSource] = await Promise.all((await Promise.all([fetc
 /**
  * Shader for objects far away from the black hole. Renders them like in euclidean space, but writes the position and direction the ray ends up in to the depth buffer
  * so reflections can be raytraced later.
- * @extends {ShaderProgram<{viewProjection:Matrix4f,modelTransform:Matrix4f,cameraPosition:Vector3f}>}
+ * @extends {ShaderProgram<{viewProjection:Matrix4f,modelTransform:Matrix4f,cameraPosition:Vector3f},{}>}
  */
 export default class MainShader extends ShaderProgram {
     /**

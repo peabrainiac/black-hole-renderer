@@ -79,7 +79,7 @@ const fragmentSource = /* glsl */ `
 `;
 
 /**
- * @extends {ShaderProgram<{viewProjection:Matrix4f}>}
+ * @extends {ShaderProgram<{viewProjection:Matrix4f},{}>}
  */
 class StarBoxShader extends ShaderProgram {
 	/**

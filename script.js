@@ -28,6 +28,7 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 	optionsMenu.accretionDiskHeight = 1;
 	optionsMenu.steps = 250;
 	optionsMenu.stepSize = 1;
+	optionsMenu.teapotPosition = "hidden";
 
 	const renderer = new Renderer(canvas);
 	const blackHole = new KerrNewmanBlackHole(new Vector3f(2,0,15));
@@ -48,6 +49,9 @@ import OptionsMenu from "./ui/OptionsMenu.js";
 	});
 	optionsMenu.onStepSizeChange(stepSize=>{
 		renderer.stepSize = stepSize;
+	});
+	optionsMenu.onTeapotPositionChange(teapotPosition=>{
+		renderer.teapotPosition = teapotPosition;
 	});
 
 	const camera = new Camera(inputHandler);
